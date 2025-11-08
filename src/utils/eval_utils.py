@@ -1,5 +1,9 @@
 """
 Evaluation utilities: FID, LPIPS, SSIM, Style Loss, etc.
+
+**Nguyễn Khang Hy (2352662)** - Team Lead
+
+Lưu ý: Implementation chi tiết sẽ được thêm sau khi có trained models và output images.
 """
 
 import torch

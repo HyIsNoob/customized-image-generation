@@ -1,5 +1,10 @@
 """
 Evaluation script for computing metrics on style transfer results.
+
+**Nguyễn Khang Hy (2352662)** - Team Lead
+
+Lưu ý: Implementation chi tiết sẽ được thêm sau khi có trained models từ Minh Quốc 
+và output images từ Thành Phát.
 """
 
 import argparse
