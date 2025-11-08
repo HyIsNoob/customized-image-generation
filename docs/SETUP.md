@@ -1,25 +1,6 @@
 # Hướng Dẫn Setup Dự Án
 
-## 1. Clone Repository
-
-```bash
-git clone https://github.com/HyIsNoob/customized-image-generation.git
-cd customized-image-generation
-```
-
-## 2. Add Collaborators
-
-Team lead (Nguyễn Khang Hy) cần add các thành viên vào repository:
-
-1. Vào https://github.com/HyIsNoob/customized-image-generation
-2. Vào Settings → Collaborators
-3. Add username GitHub của các thành viên:
-   - **Nguyễn Minh Quốc** (23521304) - Cần username GitHub
-   - **Phan Đức Thành Phát** (23521149) - Cần username GitHub
-
-Sau khi được add, các thành viên sẽ nhận email invitation và cần accept.
-
-## 3. Setup Environment
+## 1. Setup Environment
 
 ### Trên Local Machine
 
@@ -43,7 +24,7 @@ pip install -r requirements.txt
 - Bật GPU trong Settings → Accelerator → GPU
 - Add datasets: Add Data → Search "coco-2017-dataset" và "wikiart" → Add
 
-## 4. Cấu Hình
+## 2. Cấu Hình
 
 Chỉnh sửa `src/configs/lora_config.yaml`:
 
@@ -53,7 +34,7 @@ style_dir: "path/to/wikiart"
 output_dir: "results/lora_checkpoints"
 ```
 
-## 5. Add Datasets trên Kaggle
+## 3. Add Datasets trên Kaggle
 
 ### COCO 2017
 
@@ -74,7 +55,7 @@ output_dir: "results/lora_checkpoints"
 /kaggle/working/                                     # Output directory
 ```
 
-## 6. Git Workflow
+## 4. Git Workflow
 
 ### Tạo Branch Mới
 
@@ -125,14 +106,14 @@ Code Python đặt trong `src/`:
 - `src/infer.py` - Inference script
 - `src/demo.py` - Demo application
 
-## 8. Lưu Ý
+## 5. Lưu Ý
 
 - **KHÔNG commit** datasets, model weights, large files
 - Chỉ commit: notebooks, scripts, configs, documentation
 - Models và data lưu trên Google Drive
 - Sync thường xuyên với `main` branch
 
-## 9. Troubleshooting
+## 6. Troubleshooting
 
 ### Lỗi Permission
 

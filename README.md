@@ -14,7 +14,7 @@ Dự án **Customized Image Generation** nghiên cứu và triển khai phương
 
 ### Thành Viên Nhóm
 
-1. **Nguyễn Khang Hy** (2352662) - Team Lead
+1. **Nguyễn Khang Hy** (2352662)
 2. **Nguyễn Minh Quốc** (23521304)
 3. **Phan Đức Thành Phát** (23521149)
 
@@ -150,7 +150,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 
 ## Phân Công Công Việc
 
-### Nguyễn Khang Hy (2352662) - Team Lead
+### Nguyễn Khang Hy (2352662)
 
 **Trách nhiệm chính**:
 - Quản lý dự án: Timeline, phân công, theo dõi tiến độ
@@ -496,34 +496,3 @@ PyYAML
 
 - **GitHub**: https://github.com/HyIsNoob/customized-image-generation
 - **Issues**: Sử dụng GitHub Issues để báo lỗi và đề xuất
-
-## Hướng Dẫn Setup
-
-### 1. Clone Repository
-
-```bash
-git clone https://github.com/HyIsNoob/customized-image-generation.git
-cd customized-image-generation
-```
-
-### 2. Add Collaborators
-
-Team lead cần add các thành viên vào repository:
-1. Vào Settings → Collaborators
-2. Add username GitHub của các thành viên:
-   - Nguyễn Minh Quốc (23521304)
-   - Phan Đức Thành Phát (23521149)
-
-### 3. Setup Environment
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Cấu Hình
-
-Chỉnh sửa `src/configs/lora_config.yaml` với đường dẫn datasets của bạn.
-
----
-
-**Lưu ý**: Không commit datasets, model weights, large files lên GitHub. Chỉ commit notebooks, scripts, configs, documentation. Models và data lưu trên Google Drive.
