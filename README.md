@@ -342,8 +342,9 @@ customized-image-generation/
 │   └── evaluation_metrics.md         # Cách tính các chỉ số
 │
 └── results/                           # Kết quả mẫu
-    ├── samples/                       # Output samples
+    ├── eda/                           # Kết quả EDA
     └── metrics/                       # Metrics và logs
+    └── samples/                       # Output samples
 ```
 
 ---
