@@ -492,8 +492,35 @@ PyYAML
 
 ## Liên Hệ
 
-- **GitHub**: [Repository Link]
+- **GitHub**: https://github.com/HyIsNoob/customized-image-generation
 - **Issues**: Sử dụng GitHub Issues để báo lỗi và đề xuất
+
+## Hướng Dẫn Setup
+
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/HyIsNoob/customized-image-generation.git
+cd customized-image-generation
+```
+
+### 2. Add Collaborators
+
+Team lead cần add các thành viên vào repository:
+1. Vào Settings → Collaborators
+2. Add username GitHub của các thành viên:
+   - Nguyễn Minh Quốc (23521304)
+   - Phan Đức Thành Phát (23521149)
+
+### 3. Setup Environment
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Cấu Hình
+
+Chỉnh sửa `src/configs/lora_config.yaml` với đường dẫn datasets của bạn.
 
 ---
 
