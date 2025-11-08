@@ -27,13 +27,21 @@ Sau khi được add, các thành viên sẽ nhận email invitation và cần a
 pip install -r requirements.txt
 ```
 
-### Trên Google Colab
+### Trên Kaggle Notebooks
 
 ```python
+# Clone repository
 !git clone https://github.com/HyIsNoob/customized-image-generation.git
 %cd customized-image-generation
+
+# Cài đặt dependencies
 !pip install -r requirements.txt
 ```
+
+**Lưu ý**: 
+- Bật Internet trong Settings → Internet
+- Bật GPU trong Settings → Accelerator → GPU
+- Add datasets: Add Data → Search "coco-2017-dataset" và "wikiart" → Add
 
 ## 4. Cấu Hình
 
@@ -45,25 +53,26 @@ style_dir: "path/to/wikiart"
 output_dir: "results/lora_checkpoints"
 ```
 
-## 5. Download Datasets
+## 5. Add Datasets trên Kaggle
 
 ### COCO 2017
 
-1. Vào https://cocodataset.org/#download
-2. Download "2017 Train images" (18GB)
-3. Extract vào `data/coco/train/`
+1. Vào https://www.kaggle.com/datasets/awsaf49/coco-2017-dataset
+2. Click "New Notebook" hoặc "Add to notebook"
+3. Dataset sẽ có sẵn tại `/kaggle/input/coco-2017-dataset/`
 
 ### WikiArt
 
-1. Download từ https://www.wikiart.org/ hoặc sử dụng dataset có sẵn
-2. Organize theo phong cách:
-   ```
-   data/wikiart/
-   ├── monet/
-   ├── ukiyo-e/
-   ├── pop-art/
-   └── ...
-   ```
+1. Vào https://www.kaggle.com/datasets/steubk/wikiart
+2. Click "Add to notebook" (chọn notebook đã tạo)
+3. Dataset sẽ có sẵn tại `/kaggle/input/wikiart/`
+
+**Cấu trúc đường dẫn trên Kaggle:**
+```
+/kaggle/input/coco-2017-dataset/coco2017/train2017/  # Content images
+/kaggle/input/wikiart/wikiart/                       # Style images
+/kaggle/working/                                     # Output directory
+```
 
 ## 6. Git Workflow
 
@@ -138,7 +147,7 @@ Nếu không push được, kiểm tra:
 pip install --upgrade -r requirements.txt
 ```
 
-### Lỗi GPU trên Colab
+### Lỗi GPU trên Kaggle
 
-Đảm bảo Runtime → Change runtime type → GPU được chọn.
+Đảm bảo Settings → Accelerator → GPU được chọn (P100 hoặc T4).
 

@@ -1,3 +1,6 @@
+.myfile/
+
+
 # Python
 __pycache__/
 *.py[cod]
@@ -42,7 +45,6 @@ ENV/
 *.pt
 *.ckpt
 *.safetensors
-models/
 checkpoints/
 weights/
 *.bin
@@ -54,22 +56,6 @@ datasets/
 *.tar.gz
 *.h5
 *.hdf5
-
-# Results & Outputs
-results/
-outputs/
-logs/
-*.png
-*.jpg
-*.jpeg
-*.gif
-*.mp4
-*.avi
-
-# Large files
-*.pdf
-*.docx
-*.xlsx
 
 # OS
 .DS_Store

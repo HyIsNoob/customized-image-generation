@@ -350,8 +350,8 @@ customized-image-generation/
 
 ### Development Environment
 
-- **Primary**: Google Colab (GPU: T4/V100/A100)
-- **Storage**: Google Drive (sync với Colab)
+- **Primary**: Kaggle Notebooks (GPU: P100/T4)
+- **Datasets**: Kaggle Datasets (COCO 2017, WikiArt)
 - **Version Control**: GitHub
 
 ### Core Libraries
@@ -457,8 +457,8 @@ PyYAML
 
 ### Datasets
 
-- [COCO 2017](https://cocodataset.org/#download)
-- [WikiArt](https://www.wikiart.org/)
+- [COCO 2017](https://www.kaggle.com/datasets/awsaf49/coco-2017-dataset)
+- [WikiArt](https://www.kaggle.com/datasets/steubk/wikiart)
 
 ---
 
