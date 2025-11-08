@@ -178,7 +178,8 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - Notebook: `00_Data_EDA.ipynb`
 - Notebook: `04_Evaluation_Metrics.ipynb`
 - Notebook: `05_Results_Analysis.ipynb`
-- Script: `eval_utils.py`, `eval.py`
+- Script: `eval_utils.py`
+- Script: `eval.py`
 - Evaluation report
 - Final report
 
@@ -212,6 +213,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - Notebook: `01_LoRA_Training.ipynb`
 - Script: `src/models/lora.py`
 - Script: `src/train_lora.py`
+- Script: `src/utils/data_utils.py`
 - Config: `src/configs/lora_config.yaml`
 - Trained LoRA checkpoints (3-5 styles)
 - Training logs và metrics

@@ -1,10 +1,4 @@
-"""
-Visualization utilities for style transfer results.
-
-**File chung** - Sử dụng bởi:
-- Khang Hy: EDA (visualize datasets) và Evaluation (visualize results)
-- Thành Phát: Demo (visualize output)
-"""
+# Visualization utilities for style transfer results.
 
 import matplotlib.pyplot as plt
 import torch
