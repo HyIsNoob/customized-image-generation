@@ -75,6 +75,10 @@ Mỗi style cần có trigger word (từ khóa kích hoạt) để LoRA có th�
 
 Lưu caption vào file `.txt` cùng tên với ảnh (ví dụ: `image.jpg` → `image.txt`)
 
+**DreamBooth lưu ý**:
+- Chèn token riêng, ví dụ `sks`, vào mỗi caption: `"a sks style painting"`
+- Chuẩn bị thêm class captions chung cho prior preservation: `"a painting"`
+
 ### 3.3. Tổ Chức Dữ Liệu cho LoRA Training
 
 Cấu trúc thư mục sau khi preprocessing:

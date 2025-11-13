@@ -15,8 +15,7 @@ Dự án **Customized Image Generation** nghiên cứu và triển khai phương
 ### Thành Viên Nhóm
 
 1. **Nguyễn Khang Hy** (2352662)
-2. **Nguyễn Minh Quốc** (23521304)
-3. **Phan Đức Thành Phát** (23521149)
+2. **Phan Đức Thành Phát** (23521149)
 
 ---
 
@@ -32,12 +31,13 @@ Dự án **Customized Image Generation** nghiên cứu và triển khai phương
 
 - Sử dụng Stable Diffusion v1.5 làm base model
 - Fine-tuning bằng LoRA chỉ trên UNet attention layers
+- Fine-tuning bằng Dreambooth
 - Không cần text prompt, chỉ cần content image + style class
 - Nhẹ, nhanh, dễ mở rộng phong cách mới
 
 ### Mục Tiêu
 
-- Fine-tune thành công 3-5 phong cách nghệ thuật (Monet, Ukiyo-e, Pop Art, Sketch, Minimalism)
+- Fine-tune thành công 3-5 phong cách nghệ thuật
 - Ảnh sinh ra đạt FID < 60, LPIPS thấp, SSIM cao
 - Demo chạy ổn định, thời gian inference < 5s/ảnh
 - Model gọn < 1 tỉ tham số, training < vài ngày
@@ -92,6 +92,35 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 
 **Fine-tune Target**: UNet attention layers (cross-attention và self-attention)
 
+### Tại Sao Kết Hợp SD Với LoRA?
+
+**Vấn đề của Full Fine-tuning**:
+- Stable Diffusion v1.5 có ~860M parameters
+- Fine-tune toàn bộ tốn nhiều tài nguyên:
+  - GPU memory: ~24GB (cần GPU lớn như A100)
+  - Training time: Vài ngày cho 1 style
+  - Checkpoint size: ~3-4GB mỗi style
+  - Khó quản lý nhiều styles (5 styles = 15-20GB)
+
+**Giải pháp LoRA**:
+- Chỉ train ~4-8M parameters (giảm 99% so với full fine-tuning)
+- Training nhanh: 2-3 giờ thay vì vài ngày
+- Checkpoint nhỏ: ~4-8MB mỗi style (thay vì 3-4GB)
+- Tiết kiệm GPU memory: Có thể train trên GPU nhỏ hơn (T4, P100)
+- Dễ quản lý: Mỗi style 1 file LoRA nhỏ, dễ switch giữa các styles
+
+**So sánh**:
+
+| Phương pháp | Parameters | Checkpoint Size | Training Time | GPU Memory |
+|-------------|-----------|----------------|---------------|------------|
+| **Full Fine-tune** | 860M | ~3-4GB | Vài ngày | ~24GB |
+| **LoRA (r=4)** | ~4-8M | ~4-8MB | 2-3 giờ | ~12GB |
+
+**Kết luận**:
+- SD: Model mạnh, đã được train sẵn, có khả năng generate ảnh tốt
+- LoRA: Cách hiệu quả để adapt SD cho style cụ thể mà không cần train lại toàn bộ
+- Kết hợp: Tận dụng sức mạnh của SD + training nhanh/gọn của LoRA
+
 ---
 
 ## Pipeline Chi Tiết
@@ -108,7 +137,7 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 - 50-100 ảnh/phong cách
 - Các phong cách: Monet, Ukiyo-e, Pop Art, Sketch, Minimalism
 
-### 2. Fine-tune LoRA
+### 2a. Fine-tune LoRA
 
 **Cấu hình**:
 - Base model: `runwayml/stable-diffusion-v1-5`
@@ -128,6 +157,29 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - L2 loss: Tái tạo chi tiết ảnh
 - LPIPS: Duy trì độ tự nhiên theo cảm nhận người nhìn
 - Style loss (Gram matrix): Giữ họa tiết, màu sắc của style
+
+### 2b. Fine-tune DreamBooth
+
+**Mục tiêu**: Học phong cách nghệ thuật bằng cách fine-tune một phần UNet với prior preservation.
+
+**Cấu hình**:
+- Base model: `runwayml/stable-diffusion-v1-5`
+- Modules train: UNet attention + text encoder (tùy chọn)
+- Learning rate: 5e-6 – 1e-5
+- Batch size: 1-2 (gradient accumulation để tăng effective batch)
+- Steps: 800-1,200 per style (với prior preservation)
+- Optimizer: AdamW8bit
+- Scheduler: Constant hoặc Cosine
+- Training time: 4-6 giờ/style (Kaggle T4/P100)
+
+**Yêu cầu thêm**:
+- Captions chứa token đặc biệt (`sks style painting`)
+- Prior preservation dataset (ảnh chung chung) để tránh overfit
+- Gradient checkpointing + mixed precision để giảm memory
+
+**Kết quả**:
+- Checkpoint ~2-3GB/style
+- Phù hợp so sánh trực tiếp với LoRA về chất lượng vs chi phí
 
 ### 3. Inference
 
@@ -174,10 +226,17 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - So sánh các phong cách
    - Viết báo cáo cuối kỳ
 
+4. **DreamBooth Baseline**:
+   - Chuẩn bị dataset (caption + prior preservation)
+   - Fine-tune DreamBooth cho 1-2 phong cách đại diện
+   - Ghi nhận resource usage để so sánh với LoRA
+
 **Deliverables**:
 - Notebook: `00_Data_EDA.ipynb`
 - Notebook: `04_Evaluation_Metrics.ipynb`
 - Notebook: `05_Results_Analysis.ipynb`
+- Notebook: `01b_DreamBooth_Training.ipynb`
+- Script: `src/train_dreambooth.py`
 - Script: `eval_utils.py`
 - Script: `eval.py`
 - Evaluation report
@@ -185,12 +244,13 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 
 ---
 
-### Nguyễn Minh Quốc (23521304) - LoRA Training Specialist
+### Phan Đức Thành Phát (23521149) - LoRA Training & Demo
 
 **Trách nhiệm chính**:
 - Fine-tuning LoRA cho các phong cách nghệ thuật
 - Tối ưu pipeline huấn luyện
 - Hyperparameter tuning
+- Xây dựng inference pipeline & demo ứng dụng
 
 **Công việc kỹ thuật**:
 1. **LoRA Implementation**:
@@ -209,48 +269,23 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Data augmentation
    - DataLoader implementation
 
+4. **Inference & Demo**:
+   - Implement inference script và tối ưu tốc độ
+   - Tích hợp UI demo (Gradio)
+   - Visualization kết quả
+
 **Deliverables**:
-- Notebook: `01_LoRA_Training.ipynb`
+- Notebook: `01a_LoRA_Training.ipynb`
+- Notebook: `02_Inference_Pipeline.ipynb`
+- Notebook: `03_Demo_Application.ipynb`
 - Script: `src/models/lora.py`
 - Script: `src/train_lora.py`
 - Script: `src/utils/data_utils.py`
 - Config: `src/configs/lora_config.yaml`
-- Trained LoRA checkpoints (3-5 styles)
-- Training logs và metrics
-
----
-
-### Phan Đức Thành Phát (23521149) - Integration & Demo
-
-**Trách nhiệm chính**:
-- Tích hợp mô hình vào inference pipeline
-- Xây dựng giao diện demo
-- Visualization kết quả
-
-**Công việc kỹ thuật**:
-1. **Inference Pipeline**:
-   - Implement inference script với LoRA
-   - Load content image và style LoRA
-   - Generate styled images
-   - Optimize inference speed
-
-2. **Demo Application**:
-   - Gradio interface trên Colab/Hugging Face
-   - Upload content image
-   - Chọn style class (dropdown)
-   - Chỉnh style_strength, mask nếu cần
-   - Hiển thị kết quả và tải về
-
-3. **Visualization**:
-   - So sánh content/style/output side-by-side
-   - Loss curves, training progress plots
-   - Quality comparison giữa các phong cách
-
-**Deliverables**:
-- Notebook: `02_Inference_Pipeline.ipynb`
-- Notebook: `03_Demo_Application.ipynb`
 - Script: `src/infer.py`
 - Script: `src/demo.py`
+- Trained LoRA checkpoints (3-5 styles)
+- Training logs và metrics
 - Demo app (Gradio)
 - Demo video/screenshots
 
@@ -261,42 +296,46 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 ### Week 1: Setup & Training
 
 **Ngày 1-2: Setup & Data Preparation**
-- [ ] Setup GitHub repo, cấu trúc thư mục
-- [ ] Khang Hy: Download và EDA datasets
-- [ ] Minh Quốc: Setup LoRA training environment
-- [ ] Thành Phát: Research inference pipeline
+- [ ] Hy: Download datasets, chạy EDA, chuẩn bị caption + trigger words
+- [ ] Hy: Thiết lập pipeline DreamBooth (dataset, prior, config)
+- [ ] Phát: Setup môi trường LoRA, kiểm tra GPU và dependencies
+- [ ] Phát: Khởi tạo skeleton inference pipeline
 
 **Ngày 3-5: LoRA Training**
-- [ ] Minh Quốc: Implement LoRA training pipeline
-- [ ] Minh Quốc: Fine-tune 3-5 phong cách (parallel nếu có GPU)
-- [ ] Khang Hy: Setup evaluation framework
-- [ ] Thành Phát: Implement inference script
+- [ ] Phát: Implement LoRA training pipeline với diffusers
+- [ ] Phát: Fine-tune 3-5 phong cách (parallel nếu GPU cho phép)
+- [ ] Hy: Hoàn thiện evaluation framework (FID, LPIPS, SSIM)
+- [ ] Hy: Theo dõi metrics LoRA ban đầu, chuẩn bị so sánh với DreamBooth
+
+**Ngày 3-7: DreamBooth Baseline (song song)**
+- [ ] Hy: Thiết lập notebook DreamBooth và cấu hình accelerate
+- [ ] Hy: Fine-tune DreamBooth cho 1-2 style đại diện
+- [ ] Hy: Ghi lại thời gian train, kích thước checkpoint, GPU usage
 
 **Ngày 6-7: Integration & Testing**
-- [ ] Thành Phát: Tích hợp inference pipeline
-- [ ] Khang Hy: Test evaluation metrics
-- [ ] Minh Quốc: Tối ưu training nếu cần
-- [ ] Toàn team: Testing end-to-end
+- [ ] Phát: Tích hợp inference pipeline và sinh mẫu kết quả
+- [ ] Phát: Bắt đầu skeleton demo Gradio
+- [ ] Hy: Test evaluation metrics trên output hiện có
+- [ ] Cả team: Kiểm thử end-to-end (content → styled image)
 
 ### Week 2: Evaluation & Demo
 
 **Ngày 8-9: Evaluation & Analysis**
-- [ ] Khang Hy: Evaluate tất cả LoRA models
-- [ ] Khang Hy: So sánh metrics giữa các phong cách
-- [ ] Thành Phát: Visualization kết quả
-- [ ] Minh Quốc: Fine-tune nếu cần cải thiện
+- [ ] Hy: Evaluate đầy đủ LoRA models (FID, LPIPS, SSIM, loss)
+- [ ] Hy: Evaluate DreamBooth outputs, lập bảng so sánh với LoRA
+- [ ] Phát: Visualization kết quả (content/style/output, loss curves)
+- [ ] Phát: Fine-tune bổ sung nếu cần cải thiện chất lượng
 
 **Ngày 10-11: Demo & Documentation**
-- [ ] Thành Phát: Hoàn thành demo app
-- [ ] Khang Hy: Draft báo cáo
-- [ ] Toàn team: Testing demo
-- [ ] Record demo video
+- [ ] Phát: Hoàn thiện demo app (UI, inference, download)
+- [ ] Hy: Draft báo cáo + slide outline (bao gồm so sánh LoRA vs DreamBooth)
+- [ ] Cả team: Test demo, ghi nhận feedback
+- [ ] Chuẩn bị clip demo (screen recording)
 
 **Ngày 12-14: Finalization**
-- [ ] Khang Hy: Hoàn thành báo cáo
-- [ ] Toàn team: Review và chỉnh sửa
-- [ ] Chuẩn bị presentation
-- [ ] Final submission (22/11/2025)
+- [ ] Hy: Hoàn thiện báo cáo & evaluation report
+- [ ] Phát: Chỉnh sửa demo theo feedback cuối
+- [ ] Cả team: Review tổng thể, chuẩn bị presentation, final submission
 
 ---
 
@@ -311,11 +350,12 @@ customized-image-generation/
 │
 ├── notebooks/                         # Nơi làm việc chính
 │   ├── 00_Data_EDA.ipynb              # EDA và phân tích dữ liệu
-│   ├── 01_LoRA_Training.ipynb         # Huấn luyện LoRA cho các phong cách
-│   ├── 02_Inference_Pipeline.ipynb   # Inference với LoRA
-│   ├── 03_Demo_Application.ipynb     # Giao diện demo Gradio
-│   ├── 04_Evaluation_Metrics.ipynb    # Tính FID, LPIPS, SSIM
-│   └── 05_Results_Analysis.ipynb      # Phân tích và so sánh kết quả
+│   ├── 01a_LoRA_Training.ipynb         # LoRA training (Phát)
+│   ├── 01b_DreamBooth_Training.ipynb  # DreamBooth baseline (Hy)
+│   ├── 02_Inference_Pipeline.ipynb    # Inference với LoRA (Phát)
+│   ├── 03_Demo_Application.ipynb      # Giao diện demo Gradio (Phát)
+│   ├── 04_Evaluation_Metrics.ipynb    # Tính FID, LPIPS, SSIM (Hy)
+│   └── 05_Results_Analysis.ipynb      # Phân tích và so sánh kết quả (Hy)
 │
 ├── src/
 │   ├── models/                        # Chứa kiến trúc mạng
@@ -332,6 +372,7 @@ customized-image-generation/
 │   │   └── lora_config.yaml           # LoRA training config
 │   │
 │   ├── train_lora.py                  # Entry point huấn luyện
+│   ├── train_dreambooth.py            # Entry point DreamBooth baseline
 │   ├── infer.py                       # Entry point inference
 │   ├── eval.py                        # Entry point evaluation
 │   └── demo.py                        # Entry point demo app
@@ -394,6 +435,81 @@ pandas
 tqdm
 PyYAML
 ```
+
+---
+
+## Baseline và Chiến Lược Đánh Giá
+
+### Baseline
+
+**Baseline chính**: Stable Diffusion v1.5 gốc (`runwayml/stable-diffusion-v1-5`)
+
+- Model đã được train sẵn, download từ Hugging Face (không train từ đầu)
+- Sử dụng text prompt để generate ảnh
+- Không có style transfer cụ thể
+- Mục đích: So sánh để chứng minh LoRA fine-tuning cải thiện chất lượng
+
+**Baseline fine-tuning 1**: LoRA (Low-Rank Adaptation)
+- Train ~4-8M parameters, checkpoint 4-8MB
+- Ưu tiên lightweight, dễ triển khai nhiều style
+
+**Baseline fine-tuning 2**: DreamBooth (Prior Preservation Fine-tuning)
+- Train một phần UNet + text encoder, checkpoint ~2-3GB
+- Ưu tiên chất lượng cao với ít ảnh, dùng làm đối chứng với LoRA
+
+**Baseline tham khảo**: Style transfer truyền thống (AdaIN, SANet)
+
+Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_evaluation.md)
+
+### Model Training
+
+**Base Model**:
+- Download từ Hugging Face: `runwayml/stable-diffusion-v1-5`
+- **KHÔNG train từ đầu**, chỉ download và sử dụng
+- Cấu trúc: VAE (~85M) + UNet (~860M) + CLIP (~123M, không dùng)
+
+**LoRA Fine-Tuning**:
+- Load base model SD v1.5
+- Thêm LoRA layers vào UNet attention layers
+- **CHỈ train LoRA weights** (~4-8M params), không train toàn bộ UNet
+- Train trên style images từ WikiArt
+- Mỗi style → 1 LoRA checkpoint (~4-8MB)
+
+**Hyperparameters**:
+- Rank (r): 4
+- Learning rate: 1e-4
+- Batch size: 2-4
+- Steps: 5,000-8,000 per style
+- Optimizer: AdamW
+- Scheduler: Cosine
+
+### Evaluation Strategy
+
+**Metrics sử dụng**:
+1. **FID**: Đo độ "thật" của ảnh (target: < 60)
+2. **LPIPS**: Đo sự tương đồng style (target: < 0.3)
+3. **SSIM**: Đo độ giữ cấu trúc content (target: > 0.7)
+4. **Content Loss**: Giữ nội dung content image
+5. **Style Loss**: Tái tạo phong cách style image
+6. **Inference Time**: Tốc độ generate (target: < 5s/image)
+
+**Test Set**:
+- Content: 100-200 ảnh từ COCO val2017
+- Style: 10-20 ảnh đại diện cho mỗi style
+
+**So sánh với Baseline**:
+- Generate outputs với baseline (SD v1.5 gốc)
+- Generate outputs với LoRA models
+- Generate outputs với DreamBooth models
+- So sánh metrics để chứng minh cải thiện
+
+**Nguyên lý đánh giá**:
+- FID thấp = ảnh giống thật hơn
+- LPIPS thấp = style transfer thành công
+- SSIM cao = giữ được cấu trúc content
+- Cân bằng giữa content preservation và style transfer
+
+Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_evaluation.md)
 
 ---
 
@@ -479,6 +595,7 @@ PyYAML
 - [ ] Data EDA hoàn chỉnh
 - [ ] LoRA training pipeline
 - [ ] Fine-tune 3-5 phong cách
+- [ ] DreamBooth training baseline
 - [ ] Inference pipeline
 - [ ] Evaluation framework
 

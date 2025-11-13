@@ -37,3 +37,9 @@ Thời gian để generate 1 ảnh (512×512).
 
 **Target**: < 5s/image
 
+## Comparative Reporting
+
+- Báo cáo riêng metrics cho LoRA và DreamBooth
+- Bảng tổng hợp: mean ± std cho từng metric và từng phong cách
+- Thêm cột chi phí: thời gian train, kích thước checkpoint, GPU memory
+

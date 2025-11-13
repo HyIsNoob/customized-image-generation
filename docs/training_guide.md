@@ -1,4 +1,4 @@
-# Hướng Dẫn Training LoRA
+# Hướng Dẫn Training LoRA & DreamBooth
 
 ## Chuẩn Bị Dữ Liệu
 
@@ -27,7 +27,7 @@ Trên Kaggle, datasets đã có sẵn tại:
 
 Có thể tạo file CSV với content-style pairs hoặc random pairing trong training.
 
-## Training
+## Training LoRA
 
 ### 1. Setup Environment trên Kaggle
 
@@ -78,4 +78,62 @@ Checkpoints được lưu tại `/kaggle/working/lora_checkpoints/{style_name}/`
 - Learning rate 1e-4 thường tốt, có thể thử 5e-5 hoặc 2e-4
 - Training 5k-8k steps thường đủ cho mỗi phong cách
 - Sử dụng mixed precision (fp16) để tiết kiệm memory
+
+---
+
+## Training DreamBooth
+
+### 1. Chuẩn Bị Dữ Liệu
+
+- **Instance images**: 10-20 ảnh/style (resize 512x512)
+- **Captions**: Mỗi ảnh chứa token riêng, ví dụ `a sks style painting`
+- **Class images (prior)**: 200 ảnh chung chung (có thể dùng COCO hoặc generate)
+
+Lưu tại:
+```
+/kaggle/working/dreambooth/{style}/instance_images/
+/kaggle/working/dreambooth/{style}/class_images/
+```
+
+### 2. Cài Đặt Môi Trường
+
+```python
+!pip install accelerate==0.27.2 transformers==4.39.3 diffusers[torch]==0.27.0 bitsandbytes==0.43.0 xformers
+```
+
+### 3. Chạy DreamBooth Training Script
+
+```bash
+export MODEL_NAME="runwayml/stable-diffusion-v1-5"
+export INSTANCE_DIR="/kaggle/working/dreambooth/sks_style/instance_images"
+export CLASS_DIR="/kaggle/working/dreambooth/sks_style/class_images"
+export OUTPUT_DIR="/kaggle/working/dreambooth_checkpoints/sks_style"
+
+accelerate launch src/train_dreambooth.py \
+  --pretrained_model_name_or_path=$MODEL_NAME \
+  --instance_data_dir=$INSTANCE_DIR \
+  --class_data_dir=$CLASS_DIR \
+  --output_dir=$OUTPUT_DIR \
+  --instance_prompt="a sks style painting" \
+  --class_prompt="a painting" \
+  --resolution=512 \
+  --train_batch_size=1 \
+  --gradient_accumulation_steps=4 \
+  --max_train_steps=1000 \
+  --learning_rate=5e-6 \
+  --prior_loss_weight=1.0 \
+  --mixed_precision="fp16"
+```
+
+### 4. Lưu Ý Khi Train DreamBooth
+
+- Sử dụng gradient checkpointing (`--gradient_checkpointing`) để giảm memory
+- Nếu thiếu class images, dùng flag `--with_prior_preservation --prior_generation_prompt="a painting"`
+- Luôn lưu checkpoint giữa chừng (`--checkpointing_steps`)
+- Checkpoint output ~2-3GB, cần tải về máy
+
+### 5. Đánh Giá
+
+- Generate ảnh với prompt: `"a sks style painting of {content}"` (có thể sử dụng img2img)
+- So sánh metrics (FID, LPIPS, SSIM) với LoRA để đánh giá
 
