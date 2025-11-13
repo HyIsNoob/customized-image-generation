@@ -280,7 +280,6 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - Notebook: `03_Demo_Application.ipynb`
 - Script: `src/models/lora.py`
 - Script: `src/train_lora.py`
-- Script: `src/utils/data_utils.py`
 - Config: `src/configs/lora_config.yaml`
 - Script: `src/infer.py`
 - Script: `src/demo.py`
