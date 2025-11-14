@@ -16,6 +16,7 @@ Dự án **Customized Image Generation** nghiên cứu và triển khai phương
 
 1. **Nguyễn Khang Hy** (2352662)
 2. **Phan Đức Thành Phát** (23521149)
+3. **Minh Quốc** (MSSV)
 
 ---
 
@@ -24,15 +25,16 @@ Dự án **Customized Image Generation** nghiên cứu và triển khai phương
 ### Vấn Đề Hiện Tại
 
 - Các hệ thống AI sinh ảnh hiện tại (DALL-E, Midjourney) yêu cầu prompt văn bản chính xác, khó kiểm soát kết quả
-- Style transfer truyền thống (AdaIN, SANet) có giới hạn về chất lượng và độ tự nhiên
+- Style transfer truyền thống (AdaIN, các phương pháp CNN-based) có giới hạn về chất lượng và độ tự nhiên
 - Fine-tuning toàn bộ Stable Diffusion tốn tài nguyên và thời gian
 
 ### Giải Pháp Đề Xuất
 
 - Sử dụng Stable Diffusion v1.5 làm base model
-- Fine-tuning bằng LoRA chỉ trên UNet attention layers
-- Fine-tuning bằng Dreambooth
-- Không cần text prompt, chỉ cần content image + style class
+- Fine-tuning bằng **LoRA** (Low-Rank Adaptation) chỉ trên UNet attention layers
+- Fine-tuning bằng **DreamBooth** với prior preservation
+- Fine-tuning bằng **Textual Inversion** cho embedding tokens
+- So sánh 3 phương pháp fine-tuning trên cùng dataset và metrics
 - Nhẹ, nhanh, dễ mở rộng phong cách mới
 
 ### Mục Tiêu
@@ -160,26 +162,63 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 
 ### 2b. Fine-tune DreamBooth
 
-**Mục tiêu**: Học phong cách nghệ thuật bằng cách fine-tune một phần UNet với prior preservation.
+**Mục tiêu**: Fine-tune UNet với prior preservation để học phong cách nghệ thuật cụ thể. Do hạn chế về phần cứng (GPU memory trên Kaggle), chúng tôi chỉ fine-tune **attention layers** của UNet thay vì toàn bộ UNet.
+
+**Lý do chỉ train attention layers**:
+- **Hạn chế phần cứng**: Kaggle GPU (T4/P100) có ~16GB VRAM, không đủ để train full UNet (~860M parameters) với batch size hợp lý
+- **Memory requirements**: 
+  - Full UNet training: ~15-16GB VRAM (model + optimizer state + activations)
+  - Attention layers only: ~5-6GB VRAM (chỉ ~30% parameters cần train)
+- **Trade-off**: Giảm memory usage đáng kể nhưng vẫn giữ được khả năng học style transfer hiệu quả vì attention layers là phần quan trọng nhất trong UNet để học các đặc trưng style
+
+**Cấu hình**:
+- Base model: Stable Diffusion v1.5
+- **Fine-tune target: Chỉ attention layers của UNet** (cross-attention và self-attention)
+- Parameters train: ~30% của UNet (~260M parameters thay vì 860M)
+- Input size: 256×256 (giảm từ 512 để tiết kiệm memory)
+- Learning rate: 5e-6
+- Batch size: 1 (với gradient accumulation 16)
+- Steps: 1k-2k per style
+- Optimizer: AdamW
+- Loss: MSE loss + Prior preservation loss (weight=1.0)
+- Training time: ~2-3 giờ/style trên Kaggle T4/P100
+
+**Memory optimizations** (bắt buộc do hạn chế phần cứng):
+- **CPU offloading**: VAE và Text Encoder ở CPU, chỉ move lên GPU khi encode
+- **VAE slicing và tiling**: Chia VAE encoding thành các slice/tile nhỏ hơn
+- **Attention slicing**: Chia attention mechanism thành các slice
+- **Gradient checkpointing**: Trade computation for memory
+- **Resolution reduction**: 512 → 256 để giảm memory cho activations
+- **Gradient accumulation**: Batch size 1 với accumulation 16 để mô phỏng batch lớn hơn
+
+**Kết quả**:
+- Checkpoint: Chỉ lưu attention layers đã train (~260M parameters), có thể load vào base model
+- Memory usage: ~5-6GB VRAM (thay vì ~15GB nếu train full UNet)
+- Chất lượng: Vẫn đạt được style transfer tốt vì attention layers là phần quan trọng nhất
+- **Lưu ý**: Nếu có GPU lớn hơn (A100 40GB+), có thể train full UNet để đạt chất lượng cao hơn
+
+### 2c. Fine-tune Textual Inversion
+
+**Mục tiêu**: Học một embedding mới trong CLIP text encoder đại diện cho phong cách (`sks style`) thay vì fine-tune toàn bộ UNet.
 
 **Cấu hình**:
 - Base model: `runwayml/stable-diffusion-v1-5`
-- Modules train: UNet attention + text encoder (tùy chọn)
-- Learning rate: 5e-6 – 1e-5
-- Batch size: 1-2 (gradient accumulation để tăng effective batch)
-- Steps: 800-1,200 per style (với prior preservation)
-- Optimizer: AdamW8bit
-- Scheduler: Constant hoặc Cosine
-- Training time: 4-6 giờ/style (Kaggle T4/P100)
+- Modules train: Textual embedding (768 chiều) dành cho token mới
+- Learning rate: 5e-4 – 1e-3
+- Batch size: 1 (gradient accumulation 4)
+- Steps: 500-1,000 per style
+- Optimizer: AdamW
+- Scheduler: Cosine/Constant
+- Training time: < 1 giờ/style (Kaggle T4/P100)
 
 **Yêu cầu thêm**:
 - Captions chứa token đặc biệt (`sks style painting`)
-- Prior preservation dataset (ảnh chung chung) để tránh overfit
-- Gradient checkpointing + mixed precision để giảm memory
+- 10-20 instance images đã resize 512x512
+- Theo dõi loss embedding để tránh overfit
 
 **Kết quả**:
-- Checkpoint ~2-3GB/style
-- Phù hợp so sánh trực tiếp với LoRA về chất lượng vs chi phí
+- Checkpoint embedding < 1MB/style (dễ chia sẻ)
+- Có thể kết hợp với LoRA hoặc dùng riêng để generate ảnh theo phong cách
 
 ### 3. Inference
 
@@ -202,7 +241,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 
 ## Phân Công Công Việc
 
-### Nguyễn Khang Hy (2352662)
+### Nguyễn Khang Hy (2352662) - DreamBooth Training & Evaluation
 
 **Trách nhiệm chính**:
 - Quản lý dự án: Timeline, phân công, theo dõi tiến độ
@@ -215,42 +254,48 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Thống kê phân phối, visualize samples
    - Identify potential issues
 
-2. **Evaluation Framework**:
+2. **DreamBooth Training**:
+   - Fine-tune DreamBooth cho 3-5 phong cách nghệ thuật
+   - **Chỉ train attention layers của UNet** (do hạn chế GPU memory trên Kaggle)
+   - Tối ưu memory cho Kaggle GPU (CPU offloading, VAE slicing, attention slicing, resolution reduction)
+   - Implement freeze/unfreeze logic để chỉ train attention layers
+   - Hyperparameter tuning (learning rate, prior loss weight, steps)
+   - Ghi nhận thời gian train, kích thước checkpoint, GPU usage
+   - Save/load DreamBooth checkpoints (chỉ attention layers)
+
+3. **Evaluation Framework**:
    - Implement metrics: FID, LPIPS, SSIM
    - Content loss, Style loss calculation
    - Inference time benchmark
    - Create test suite với diverse samples
+   - So sánh LoRA vs DreamBooth vs Textual Inversion
 
-3. **Results & Reporting**:
-   - Tổng hợp kết quả training
-   - So sánh các phong cách
+4. **Results & Reporting**:
+   - Tổng hợp kết quả training từ cả 3 phương pháp
+   - So sánh các phong cách và các phương pháp fine-tuning
    - Viết báo cáo cuối kỳ
-
-4. **DreamBooth Baseline**:
-   - Chuẩn bị dataset (caption + prior preservation)
-   - Fine-tune DreamBooth cho 1-2 phong cách đại diện
-   - Ghi nhận resource usage để so sánh với LoRA
 
 **Deliverables**:
 - Notebook: `00_Data_EDA.ipynb`
+- Notebook: `01b_DreamBooth_Training.ipynb`
 - Notebook: `04_Evaluation_Metrics.ipynb`
 - Notebook: `05_Results_Analysis.ipynb`
-- Notebook: `01b_DreamBooth_Training.ipynb`
-- Script: `src/train_dreambooth.py`
+- Script: `src/train_dreambooth.py` (nếu cần)
 - Script: `eval_utils.py`
 - Script: `eval.py`
+- Trained DreamBooth checkpoints (3-5 styles)
 - Evaluation report
 - Final report
 
 ---
 
-### Phan Đức Thành Phát (23521149) - LoRA Training & Demo
+### Phan Đức Thành Phát (23521149) - LoRA Training
 
 **Trách nhiệm chính**:
 - Fine-tuning LoRA cho các phong cách nghệ thuật
 - Tối ưu pipeline huấn luyện
 - Hyperparameter tuning
-- Xây dựng inference pipeline & demo ứng dụng
+- Cung cấp inference pipeline ổn định cho toàn hệ thống
 
 **Công việc kỹ thuật**:
 1. **LoRA Implementation**:
@@ -269,15 +314,14 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Data augmentation
    - DataLoader implementation
 
-4. **Inference & Demo**:
+4. **Inference Support**:
    - Implement inference script và tối ưu tốc độ
-   - Tích hợp UI demo (Gradio)
-   - Visualization kết quả
+   - Bàn giao checkpoints + hướng dẫn load LoRA cho pipeline chung
+   - Hỗ trợ Minh Quốc tích hợp các lựa chọn LoRA trong demo
 
 **Deliverables**:
 - Notebook: `01a_LoRA_Training.ipynb`
 - Notebook: `02_Inference_Pipeline.ipynb`
-- Notebook: `03_Demo_Application.ipynb`
 - Script: `src/models/lora.py`
 - Script: `src/train_lora.py`
 - Config: `src/configs/lora_config.yaml`
@@ -285,8 +329,40 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - Script: `src/demo.py`
 - Trained LoRA checkpoints (3-5 styles)
 - Training logs và metrics
-- Demo app (Gradio)
-- Demo video/screenshots
+
+---
+
+### Trần Minh Quốc (MSSV) - Textual Inversion & Demo
+
+**Trách nhiệm chính**:
+- Fine-tuning textual inversion embeddings cho từng phong cách
+- Phát triển demo Gradio tích hợp lựa chọn mô hình (LoRA / DreamBooth / Textual Inversion)
+- Phối hợp inference pipeline để hỗ trợ nhiều baseline
+
+**Công việc kỹ thuật**:
+1. **Textual Inversion Training**:
+   - Chuẩn bị instance captions với token đặc biệt
+   - Huấn luyện embedding trên SD v1.5 (500-1000 steps/style)
+   - Quản lý checkpoint embeddings (.pt /.bin)
+   - Ghi nhận thời gian train, kích thước checkpoint, GPU usage
+
+2. **Demo & UX**:
+   - Mở rộng notebook `03_Demo_Application.ipynb`
+   - Cho phép người dùng chọn mô hình (LoRA / DreamBooth / Textual Inversion) + tham số (style strength, steps)
+   - Tích hợp inference pipeline cho cả 3 phương pháp
+   - Xuất bản hướng dẫn sử dụng/demo video
+
+3. **Inference Integration**:
+   - Cập nhật `src/infer.py` để hỗ trợ textual inversion weights
+   - Đảm bảo compatibility với LoRA và DreamBooth outputs
+   - Hỗ trợ load và switch giữa các model types
+
+**Deliverables**:
+- Notebook: `01c_Textual_Inversion_Training.ipynb`
+- Notebook: `03_Demo_Application.ipynb`
+- Textual inversion embedding checkpoints (mỗi style)
+- Script: `src/train_textual_inversion.py`
+- Demo app (Gradio) + video/screenshots
 
 ---
 
@@ -296,44 +372,49 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 
 **Ngày 1-2: Setup & Data Preparation**
 - [ ] Hy: Download datasets, chạy EDA, chuẩn bị caption + trigger words
-- [ ] Hy: Thiết lập pipeline DreamBooth (dataset, prior, config)
+- [ ] Hy: Setup môi trường DreamBooth, kiểm tra GPU và dependencies, tối ưu memory
 - [ ] Phát: Setup môi trường LoRA, kiểm tra GPU và dependencies
 - [ ] Phát: Khởi tạo skeleton inference pipeline
+- [ ] Minh Quốc: Chuẩn bị captions/token cho textual inversion, kiểm tra script training
 
-**Ngày 3-5: LoRA Training**
+**Ngày 3-5: LoRA & DreamBooth Training (song song)**
 - [ ] Phát: Implement LoRA training pipeline với diffusers
-- [ ] Phát: Fine-tune 3-5 phong cách (parallel nếu GPU cho phép)
+- [ ] Phát: Fine-tune LoRA cho 3-5 phong cách (parallel nếu GPU cho phép)
+- [ ] Hy: Implement DreamBooth training pipeline với memory optimizations
+- [ ] Hy: Fine-tune DreamBooth cho 3-5 phong cách
 - [ ] Hy: Hoàn thiện evaluation framework (FID, LPIPS, SSIM)
-- [ ] Hy: Theo dõi metrics LoRA ban đầu, chuẩn bị so sánh với DreamBooth
+- [ ] Minh Quốc: Chạy thử textual inversion với 1 phong cách để kiểm tra config
 
-**Ngày 3-7: DreamBooth Baseline (song song)**
-- [ ] Hy: Thiết lập notebook DreamBooth và cấu hình accelerate
-- [ ] Hy: Fine-tune DreamBooth cho 1-2 style đại diện
-- [ ] Hy: Ghi lại thời gian train, kích thước checkpoint, GPU usage
+**Ngày 3-7: Textual Inversion Training (song song)**
+- [ ] Minh Quốc: Huấn luyện textual inversion cho 3-5 phong cách, log thời gian và VRAM
+- [ ] Hy & Phát & Minh Quốc: Ghi lại thời gian train, kích thước checkpoint, GPU usage cho cả 3 phương pháp
 
 **Ngày 6-7: Integration & Testing**
 - [ ] Phát: Tích hợp inference pipeline và sinh mẫu kết quả
-- [ ] Phát: Bắt đầu skeleton demo Gradio
+- [ ] Minh Quốc: Bắt đầu skeleton demo Gradio (chọn model, upload ảnh)
 - [ ] Hy: Test evaluation metrics trên output hiện có
 - [ ] Cả team: Kiểm thử end-to-end (content → styled image)
 
 ### Week 2: Evaluation & Demo
 
 **Ngày 8-9: Evaluation & Analysis**
-- [ ] Hy: Evaluate đầy đủ LoRA models (FID, LPIPS, SSIM, loss)
-- [ ] Hy: Evaluate DreamBooth outputs, lập bảng so sánh với LoRA
-- [ ] Phát: Visualization kết quả (content/style/output, loss curves)
-- [ ] Phát: Fine-tune bổ sung nếu cần cải thiện chất lượng
+- [ ] Hy: Evaluate đầy đủ cả 3 phương pháp (LoRA, DreamBooth, Textual Inversion)
+- [ ] Hy: Tính metrics: FID, LPIPS, SSIM, Content Loss, Style Loss cho từng phương pháp
+- [ ] Hy: Lập bảng so sánh chi tiết: thời gian train, kích thước checkpoint, chất lượng output
+- [ ] Phát: Visualization kết quả (content/style/output, loss curves) cho LoRA
+- [ ] Minh Quốc: Visualization kết quả cho Textual Inversion
+- [ ] Hy: Visualization kết quả cho DreamBooth
+- [ ] Cả team: Fine-tune bổ sung nếu cần cải thiện chất lượng
 
 **Ngày 10-11: Demo & Documentation**
-- [ ] Phát: Hoàn thiện demo app (UI, inference, download)
-- [ ] Hy: Draft báo cáo + slide outline (bao gồm so sánh LoRA vs DreamBooth)
+- [ ] Minh Quốc: Hoàn thiện demo app (UI, inference, download) với 3 phương pháp
+- [ ] Hy: Draft báo cáo + slide outline (bao gồm so sánh LoRA vs DreamBooth vs Textual Inversion)
 - [ ] Cả team: Test demo, ghi nhận feedback
 - [ ] Chuẩn bị clip demo (screen recording)
 
 **Ngày 12-14: Finalization**
 - [ ] Hy: Hoàn thiện báo cáo & evaluation report
-- [ ] Phát: Chỉnh sửa demo theo feedback cuối
+- [ ] Minh Quốc: Chỉnh sửa demo theo feedback cuối
 - [ ] Cả team: Review tổng thể, chuẩn bị presentation, final submission
 
 ---
@@ -348,11 +429,12 @@ customized-image-generation/
 ├── requirements.txt                   # Danh sách dependencies
 │
 ├── notebooks/                         # Nơi làm việc chính
-│   ├── 00_Data_EDA.ipynb              # EDA và phân tích dữ liệu
+│   ├── 00_Data_EDA.ipynb              # EDA và phân tích dữ liệu (Hy)
 │   ├── 01a_LoRA_Training.ipynb         # LoRA training (Phát)
-│   ├── 01b_DreamBooth_Training.ipynb  # DreamBooth baseline (Hy)
-│   ├── 02_Inference_Pipeline.ipynb    # Inference với LoRA (Phát)
-│   ├── 03_Demo_Application.ipynb      # Giao diện demo Gradio (Phát)
+│   ├── 01b_DreamBooth_Training.ipynb   # DreamBooth training (Hy)
+│   ├── 01c_Textual_Inversion_Training.ipynb  # Textual inversion (Minh Quốc)
+│   ├── 02_Inference_Pipeline.ipynb    # Inference với các phương pháp (Phát)
+│   ├── 03_Demo_Application.ipynb      # Giao diện demo Gradio (Minh Quốc)
 │   ├── 04_Evaluation_Metrics.ipynb    # Tính FID, LPIPS, SSIM (Hy)
 │   └── 05_Results_Analysis.ipynb      # Phân tích và so sánh kết quả (Hy)
 │
@@ -370,9 +452,10 @@ customized-image-generation/
 │   ├── configs/                        # File cấu hình siêu tham số
 │   │   └── lora_config.yaml           # LoRA training config
 │   │
-│   ├── train_lora.py                  # Entry point huấn luyện
-│   ├── train_dreambooth.py            # Entry point DreamBooth baseline
-│   ├── infer.py                       # Entry point inference
+│   ├── train_lora.py                  # Entry point huấn luyện LoRA
+│   ├── train_dreambooth.py            # Entry point huấn luyện DreamBooth (nếu cần)
+│   ├── train_textual_inversion.py     # Entry point textual inversion embeddings
+│   ├── infer.py                       # Entry point inference (hỗ trợ cả 3 phương pháp)
 │   ├── eval.py                        # Entry point evaluation
 │   └── demo.py                        # Entry point demo app
 │
@@ -451,12 +534,22 @@ PyYAML
 **Baseline fine-tuning 1**: LoRA (Low-Rank Adaptation)
 - Train ~4-8M parameters, checkpoint 4-8MB
 - Ưu tiên lightweight, dễ triển khai nhiều style
+- Training nhanh, memory efficient
 
-**Baseline fine-tuning 2**: DreamBooth (Prior Preservation Fine-tuning)
-- Train một phần UNet + text encoder, checkpoint ~2-3GB
-- Ưu tiên chất lượng cao với ít ảnh, dùng làm đối chứng với LoRA
+**Baseline fine-tuning 2**: DreamBooth
+- **Chỉ fine-tune attention layers của UNet** (do hạn chế GPU memory trên Kaggle)
+- Train ~30% parameters (~260M thay vì 860M full UNet)
+- Checkpoint: Chỉ lưu attention layers đã train (nhỏ hơn full model)
+- Training lâu hơn, memory usage ~5-6GB VRAM (với optimizations)
+- Sử dụng prior preservation để tránh overfitting
+- **Lưu ý**: Trong implementation này, không train full UNet do hạn chế phần cứng
 
-**Baseline tham khảo**: Style transfer truyền thống (AdaIN, SANet)
+**Baseline fine-tuning 3**: Textual Inversion
+- Fine-tune embedding của token đặc biệt trong CLIP text encoder (~768 params)
+- Checkpoint < 1MB, training 500-1000 steps/style, phù hợp cho Kaggle
+- Rất nhẹ, training nhanh nhất
+
+**Baseline tham khảo**: Stable Diffusion v1.5 gốc (không fine-tune)
 
 Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_evaluation.md)
 
@@ -467,20 +560,35 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 - **KHÔNG train từ đầu**, chỉ download và sử dụng
 - Cấu trúc: VAE (~85M) + UNet (~860M) + CLIP (~123M, không dùng)
 
-**LoRA Fine-Tuning**:
+**LoRA Fine-Tuning** (Phát):
 - Load base model SD v1.5
 - Thêm LoRA layers vào UNet attention layers
 - **CHỈ train LoRA weights** (~4-8M params), không train toàn bộ UNet
 - Train trên style images từ WikiArt
 - Mỗi style → 1 LoRA checkpoint (~4-8MB)
 
-**Hyperparameters**:
-- Rank (r): 4
-- Learning rate: 1e-4
-- Batch size: 2-4
-- Steps: 5,000-8,000 per style
-- Optimizer: AdamW
-- Scheduler: Cosine
+**DreamBooth Fine-Tuning** (Hy):
+- Load base model SD v1.5
+- **Chỉ fine-tune attention layers của UNet** (do hạn chế GPU memory trên Kaggle)
+  - Freeze tất cả parameters của UNet
+  - Chỉ enable gradient cho attention layers (cross-attention và self-attention)
+  - Train ~30% parameters (~260M thay vì 860M)
+- Sử dụng prior preservation với class images để tránh overfitting
+- Train trên instance images + class images từ WikiArt
+- Memory optimizations: CPU offloading, VAE slicing, attention slicing, resolution 256
+- Mỗi style → 1 DreamBooth checkpoint (chỉ lưu attention layers đã train)
+- **Lưu ý**: Nếu có GPU lớn hơn (A100 40GB+), có thể train full UNet để đạt chất lượng cao hơn
+
+**Textual Inversion Fine-Tuning** (Minh Quốc):
+- Load base model SD v1.5
+- Fine-tune embedding của special token trong CLIP text encoder
+- Train trên style images với captions chứa special token
+- Mỗi style → 1 embedding checkpoint (< 1MB)
+
+**Hyperparameters** (tham khảo):
+- LoRA: Rank=4, LR=1e-4, Batch=2-4, Steps=5k-8k
+- DreamBooth: LR=5e-6, Batch=1, Steps=1k-2k, Prior loss weight=1.0
+- Textual Inversion: LR=5e-4, Batch=1, Steps=500-1000
 
 ### Evaluation Strategy
 
@@ -497,10 +605,11 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 - Style: 10-20 ảnh đại diện cho mỗi style
 
 **So sánh với Baseline**:
-- Generate outputs với baseline (SD v1.5 gốc)
+- Generate outputs với baseline (SD v1.5 gốc - không fine-tune)
 - Generate outputs với LoRA models
 - Generate outputs với DreamBooth models
-- So sánh metrics để chứng minh cải thiện
+- Generate outputs với Textual Inversion embeddings
+- So sánh metrics để chứng minh cải thiện và đánh giá trade-offs giữa các phương pháp
 
 **Nguyên lý đánh giá**:
 - FID thấp = ảnh giống thật hơn
@@ -593,9 +702,10 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 
 - [ ] Data EDA hoàn chỉnh
 - [ ] LoRA training pipeline
-- [ ] Fine-tune 3-5 phong cách
-- [ ] DreamBooth training baseline
-- [ ] Inference pipeline
+- [ ] DreamBooth training pipeline
+- [ ] Textual inversion training pipeline
+- [ ] Fine-tune 3-5 phong cách cho mỗi phương pháp
+- [ ] Inference pipeline (hỗ trợ cả 3 phương pháp)
 - [ ] Evaluation framework
 
 ### Finalization Phase
