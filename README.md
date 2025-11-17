@@ -191,11 +191,46 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - **Resolution reduction**: 512 → 256 để giảm memory cho activations
 - **Gradient accumulation**: Batch size 1 với accumulation 16 để mô phỏng batch lớn hơn
 
-**Kết quả**:
+**Kết quả và Hạn chế**:
 - Checkpoint: Chỉ lưu attention layers đã train (~260M parameters), có thể load vào base model
 - Memory usage: ~5-6GB VRAM (thay vì ~15GB nếu train full UNet)
-- Chất lượng: Vẫn đạt được style transfer tốt vì attention layers là phần quan trọng nhất
-- **Lưu ý**: Nếu có GPU lớn hơn (A100 40GB+), có thể train full UNet để đạt chất lượng cao hơn
+- Chất lượng: Style transfer hoạt động nhưng chưa mạnh như full UNet training
+
+**Tại sao kết quả chưa tối ưu?**:
+1. **Chỉ train attention layers (~30% parameters)**:
+   - Attention layers: Điều khiển "what to attend to" (nội dung, style concept)
+   - ResNet blocks: Điều khiển "how to process" (texture, brushstrokes, rendering details)
+   - **Hệ quả**: Model học được style concept nhưng thiếu texture/brushstroke details
+   
+2. **Hạn chế phần cứng**:
+   - Kaggle GPU: T4/P100 với 16GB VRAM
+   - Full UNet training cần ~20-24GB VRAM (model + optimizer state + activations)
+   - Không thể train full UNet → phải chấp nhận trade-off
+   
+3. **Hạn chế thời gian**:
+   - Kaggle timeout: 12 giờ/session
+   - Training 1 style: ~4-6 giờ (với attention-only)
+   - Không thể train lại nhiều lần để tối ưu hyperparameters
+   - Kaggle weekly quota: Giới hạn số lần chạy GPU/week
+   
+4. **Resolution thấp**:
+   - Input: 256×256 (thay vì 512×512) để tiết kiệm memory
+   - Mất chi tiết texture và brushstrokes ở resolution thấp
+
+**Trade-off đã chấp nhận**:
+- ✅ Có thể train được trên Kaggle GPU (tránh OOM)
+- ✅ Style transfer hoạt động (khác biệt rõ so với baseline)
+- ✅ Có painterly quality (brushstrokes, texture)
+- ❌ Style chưa đủ mạnh như full training
+- ❌ Một số ảnh vẫn còn geometric/clean (thiếu texture details)
+
+**Cải thiện không cần train lại**:
+- Tăng `guidance_scale` (7.5 → 8.5-9.0) để style mạnh hơn
+- Tăng `num_inference_steps` (50 → 75-100) để chi tiết hơn
+- Thử các scheduler khác (DPMSolverMultistep, Euler) để chất lượng tốt hơn
+- Xem notebook inference test để điều chỉnh parameters
+
+**Lưu ý**: Nếu có GPU lớn hơn (A100 40GB+) và thời gian đủ, có thể train full UNet để đạt chất lượng cao hơn
 
 ### 2c. Fine-tune Textual Inversion
 
