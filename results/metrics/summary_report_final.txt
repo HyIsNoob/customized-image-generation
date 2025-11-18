@@ -1,0 +1,11 @@
+RESULTS SUMMARY REPORT (FINAL)
+================================================================================
+
+Baseline (SD v1.5 img2img):
+  CLIP-content: 0.4089
+  Style Strength: 1.0000
+
+Best Models:
+  Thấp nhất CLIP-content: lora_actionpainting (0.4153)
+  Style mạnh nhất: dreambooth_newrealism (1.0865)
+  Thấp nhất CLIP-style: lora_syntheticcubism (0.3293)
