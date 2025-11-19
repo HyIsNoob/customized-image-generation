@@ -55,11 +55,13 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 ### Input/Output
 
 **Input:**
+
 - Content_Image: Ảnh gốc giữ bố cục và nội dung chính
 - Style_Class hoặc Style_Image: Lựa chọn phong cách từ thư viện có sẵn hoặc upload ảnh phong cách
 - Tùy chọn: style_strength, mask vùng áp style
 
 **Output:**
+
 - Ảnh mới giữ bố cục content và mang phong cách tương ứng
 
 ### Ràng Buộc
@@ -86,6 +88,7 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 **Công thức**: `W' = W + α·A·B` với A ∈ R^(d×r), B ∈ R^(r×d), r << d
 
 **Ưu điểm**:
+
 - Giảm số tham số train từ ~860M xuống ~4-8M
 - Training nhanh hơn 10-20 lần
 - Dễ quản lý nhiều style (mỗi style 1 checkpoint)
@@ -96,6 +99,7 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 ### Tại Sao Kết Hợp SD Với LoRA?
 
 **Vấn đề của Full Fine-tuning**:
+
 - Stable Diffusion v1.5 có ~860M parameters
 - Fine-tune toàn bộ tốn nhiều tài nguyên:
   - GPU memory: ~24GB (cần GPU lớn như A100)
@@ -104,6 +108,7 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
   - Khó quản lý nhiều styles (5 styles = 15-20GB)
 
 **Giải pháp LoRA**:
+
 - Chỉ train ~4-8M parameters (giảm 99% so với full fine-tuning)
 - Training nhanh: < 6 giờ thay vì vài ngày (thực tế: ~5-6 giờ cho 1 style)
 - Checkpoint nhỏ: ~4-8MB mỗi style (thay vì 3-4GB)
@@ -115,10 +120,11 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 | Phương pháp | Parameters | Checkpoint Size | Training Time | GPU Memory |
 |-------------|-----------|----------------|---------------|------------|
 | **Full Fine-tune** | 860M | ~3-4GB | Vài ngày | ~24GB |
-| **LoRA (r=4)** | ~4-8M | ~4-8MB | < 6 giờ | ~12GB |
-| **DreamBooth (attention-only)** | ~260M (30% UNet) | ~260MB | ~12 giờ | ~5-6GB |
+| **LoRA (r=4)** | ~4-8M | ~1-2GB | < 6 giờ | ~12GB |
+| **DreamBooth (attention-only)** | ~260M (30% UNet) | ~3-4GB | ~12 giờ | ~5-6GB |
 
 **Kết luận**:
+
 - SD: Model mạnh, đã được train sẵn, có khả năng generate ảnh tốt
 - LoRA: Cách hiệu quả nhất để adapt SD cho style cụ thể - training nhanh nhất (< 6h) với ít parameters nhất (~4-8M)
 - DreamBooth: Training chậm hơn (~12h) dù chỉ train 30% parameters do phải load toàn bộ model và xử lý prior preservation
@@ -131,11 +137,13 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 ### 1. Chuẩn Bị Dữ Liệu
 
 **Content Dataset**: COCO 2017
+
 - 118k train images, 5k val images
 - Ảnh thực tế đời thường, bố cục tự nhiên
 - Resize về 512x512
 
 **Style Dataset**: WikiArt
+
 - 3-5 phong cách nghệ thuật
 - 50-100 ảnh/phong cách
 - Các phong cách: Contemporary_Realism, New_Realism, Synthetic_Cubism, Analytical_Cubism, Action_painting
@@ -143,6 +151,7 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 ### 2a. Fine-tune LoRA
 
 **Cấu hình**:
+
 - Base model: `runwayml/stable-diffusion-v1-5`
 - Fine-tune target: UNet attention layers
 - Rank: 4
@@ -156,6 +165,7 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 ```
 L_total = α·L2 + β·LPIPS + γ·StyleLoss
 ```
+
 - L2 loss: Tái tạo chi tiết ảnh
 - LPIPS: Duy trì độ tự nhiên theo cảm nhận người nhìn
 - Style loss (Gram matrix): Giữ họa tiết, màu sắc của style
@@ -165,6 +175,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 **Mục tiêu**: Fine-tune UNet với prior preservation để học phong cách nghệ thuật cụ thể. Do hạn chế về phần cứng (GPU memory trên Kaggle), chúng em chỉ fine-tune **attention layers** của UNet thay vì toàn bộ UNet.
 
 **Lý do chỉ train attention layers**:
+
 - **Hạn chế phần cứng**: Kaggle GPU (T4/P100) có ~16GB VRAM, không đủ để train full UNet (~860M parameters) với batch size hợp lý
 - **Memory requirements**: 
   - Full UNet training: ~15-16GB VRAM (model + optimizer state + activations)
@@ -172,6 +183,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - **Trade-off**: Giảm memory usage đáng kể nhưng vẫn giữ được khả năng học style transfer hiệu quả vì attention layers là phần quan trọng nhất trong UNet để học các đặc trưng style
 
 **Cấu hình**:
+
 - Base model: Stable Diffusion v1.5
 - **Fine-tune target: Chỉ attention layers của UNet** (cross-attention và self-attention)
 - Parameters train: ~30% của UNet (~260M parameters thay vì 860M)
@@ -183,6 +195,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - Loss: MSE loss + Prior preservation loss (weight=1.0)
 
 **Memory optimizations** (bắt buộc do hạn chế phần cứng):
+
 - **CPU offloading**: VAE và Text Encoder ở CPU, chỉ move lên GPU khi encode
 - **VAE slicing và tiling**: Chia VAE encoding thành các slice/tile nhỏ hơn
 - **Attention slicing**: Chia attention mechanism thành các slice
@@ -191,11 +204,13 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - **Gradient accumulation**: Batch size 1 với accumulation 16 để mô phỏng batch lớn hơn
 
 **Kết quả và Hạn chế**:
+
 - Checkpoint: Chỉ lưu attention layers đã train (~260M parameters), có thể load vào base model
 - Memory usage: ~5-6GB VRAM (thay vì ~15GB nếu train full UNet)
 - Chất lượng: Style transfer hoạt động nhưng chưa mạnh như full UNet training
 
 **Tại sao kết quả chưa tối ưu?**:
+
 1. **Chỉ train attention layers (~30% parameters)**:
    - Attention layers: Điều khiển "what to attend to" (nội dung, style concept)
    - ResNet blocks: Điều khiển "how to process" (texture, brushstrokes, rendering details)
@@ -226,6 +241,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 **Mục tiêu**: Học một embedding mới trong CLIP text encoder đại diện cho phong cách (`sks style`) thay vì fine-tune toàn bộ UNet.
 
 **Cấu hình**:
+
 - Base model: `runwayml/stable-diffusion-v1-5`
 - Modules train: Textual embedding (768 chiều) dành cho token mới
 - Learning rate: 5e-5
@@ -235,11 +251,13 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - Scheduler: Cosine/Constant
 
 **Yêu cầu thêm**:
+
 - Captions chứa token đặc biệt (`sks style painting`)
 - 10-20 instance images đã resize 512x512
 - Theo dõi loss embedding để tránh overfit
 
 **Kết quả**:
+
 - Checkpoint embedding < 1MB/style (dễ chia sẻ)
 - Có thể kết hợp với LoRA hoặc dùng riêng để generate ảnh theo phong cách
 
@@ -267,11 +285,13 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 ### Nguyễn Khang Hy (2352662) - DreamBooth Training & Evaluation
 
 **Trách nhiệm chính**:
+
 - Quản lý dự án: Timeline, phân công, theo dõi tiến độ
 - Tích hợp: Đảm bảo các phần code hoạt động cùng nhau
 - Documentation: README, báo cáo cuối kỳ, presentation
 
 **Công việc kỹ thuật**:
+
 1. **EDA & Data Analysis**:
    - Phân tích dataset COCO và WikiArt
    - Thống kê phân phối, visualize samples
@@ -299,6 +319,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Viết báo cáo cuối kỳ
 
 **Deliverables**:
+
 - Notebook: `00-Data-EDA.ipynb`
 - Notebook: `01b_DreamBooth_Training.ipynb`
 - Notebook: `04a_Evaluation_Metrics_LoRA.ipynb`
@@ -313,12 +334,14 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 ### Phan Đức Thành Phát (23521149) - LoRA Training
 
 **Trách nhiệm chính**:
+
 - Fine-tuning LoRA cho các phong cách nghệ thuật
 - Tối ưu pipeline huấn luyện
 - Hyperparameter tuning
 - Cung cấp inference pipeline ổn định cho toàn hệ thống
 
 **Công việc kỹ thuật**:
+
 1. **LoRA Implementation**:
    - Implement LoRA layers cho UNet
    - Setup training pipeline với diffusers library
@@ -341,6 +364,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Hỗ trợ Minh Quốc tích hợp các lựa chọn LoRA trong demo
 
 **Deliverables**:
+
 - Notebook: `01a_LoRA_Training.ipynb`
 - Notebook: `testInfer/01-LoRA-Inference-Test.ipynb`
 - Trained LoRA checkpoints (5 styles)
@@ -352,11 +376,13 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 ### Trần Minh Quốc (MSSV) - Textual Inversion & Demo
 
 **Trách nhiệm chính**:
+
 - Fine-tuning textual inversion embeddings cho từng phong cách
 - Phát triển demo Gradio tích hợp lựa chọn mô hình (LoRA / DreamBooth / Textual Inversion)
 - Phối hợp inference pipeline để hỗ trợ nhiều baseline
 
 **Công việc kỹ thuật**:
+
 1. **Textual Inversion Training**:
    - Chuẩn bị instance captions với token đặc biệt
    - Huấn luyện embedding trên SD v1.5 (500-1000 steps/style)
@@ -375,6 +401,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Hỗ trợ load và switch giữa các model types
 
 **Deliverables**:
+
 - Notebook: `01c_Textual_Inversion_Training.ipynb`
 - Notebook: `testInfer/03-Textual-Inversion-Inference-Test.ipynb`
 - Notebook: `03_Demo_Application.ipynb`
@@ -480,11 +507,13 @@ PyYAML
 - Mục đích: So sánh để chứng minh LoRA fine-tuning cải thiện chất lượng
 
 **Baseline fine-tuning 1**: LoRA (Low-Rank Adaptation)
+
 - Train ~4-8M parameters, checkpoint 4-8MB
 - Ưu tiên lightweight, dễ triển khai nhiều style
 - Training nhanh, memory efficient
 
 **Baseline fine-tuning 2**: DreamBooth
+
 - **Chỉ fine-tune attention layers của UNet** (do hạn chế GPU memory trên Kaggle)
 - Train ~30% parameters (~260M thay vì 860M full UNet)
 - Checkpoint: Chỉ lưu attention layers đã train (nhỏ hơn full model)
@@ -493,6 +522,7 @@ PyYAML
 - **Lưu ý**: Trong implementation này, không train full UNet do hạn chế phần cứng
 
 **Baseline fine-tuning 3**: Textual Inversion
+
 - Fine-tune embedding của token đặc biệt trong CLIP text encoder (~768 params)
 - Checkpoint < 1MB, training 400 steps/style, phù hợp cho Kaggle
 - Rất nhẹ, training nhanh nhất
@@ -504,11 +534,13 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 ### Model Training
 
 **Base Model**:
+
 - Download từ Hugging Face: `runwayml/stable-diffusion-v1-5`
 - **KHÔNG train từ đầu**, chỉ download và sử dụng
 - Cấu trúc: VAE (~85M) + UNet (~860M) + CLIP (~123M, không dùng)
 
 **LoRA Fine-Tuning** (Phát):
+
 - Load base model SD v1.5
 - Thêm LoRA layers vào UNet attention layers
 - **CHỈ train LoRA weights** (~4-8M params), không train toàn bộ UNet
@@ -516,6 +548,7 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 - Mỗi style → 1 LoRA checkpoint (~4-8MB)
 
 **DreamBooth Fine-Tuning** (Hy):
+
 - Load base model SD v1.5
 - **Chỉ fine-tune attention layers của UNet** (do hạn chế GPU memory trên Kaggle)
   - Freeze tất cả parameters của UNet
@@ -527,12 +560,14 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 - Mỗi style → 1 DreamBooth checkpoint (chỉ lưu attention layers đã train)
 
 **Textual Inversion Fine-Tuning** (Minh Quốc):
+
 - Load base model SD v1.5
 - Fine-tune embedding của special token trong CLIP text encoder
 - Train trên style images với captions chứa special token
 - Mỗi style → 1 embedding checkpoint (< 1MB)
 
 **Hyperparameters** (tham khảo):
+
 - LoRA: Rank=4, LR=1e-4, Batch=2, Steps=1.5k
 - DreamBooth: LR=1e-5, Batch=1, Steps=2k, Prior loss weight=0.6
 - Textual Inversion: LR=5e-5, Batch=1, Steps=400
@@ -546,19 +581,23 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 - **CLIP-style**: `1 - cos_sim(clip(output), clip(style_reference))`. Thấp hơn → output giống style reference hơn theo CLIP.
 
 **Additional Metrics**:
+
 - **Inference Time**: < 5s/ảnh trên Kaggle P100/T4.
 
 **Test Set**:
+
 - **Content**: Tập con COCO val2017 (8 ảnh resized 256×256). Danh sách ảnh được cố định và chia sẻ giữa mọi notebook qua `content_paths.json`.
 - **Style**: WikiArt images (10 ảnh/style). Danh sách ảnh cố định qua `style_paths.json` để LoRA và DreamBooth/TI dùng chung baseline.
 
 **So sánh với Baseline**:
+
 - Baseline: `runwayml/stable-diffusion-v1-5` chạy img2img cùng content images (dùng để chuẩn hóa Style Strength Score).
 - DreamBooth: Contemporary_Realism, New_Realism (2 styles).
 - LoRA: Action_painting, Analytical_Cubism, Contemporary_Realism, New_Realism, Synthetic_Cubism (5 styles).
 - Textual Inversion: sks_style (1 style).
 
 **Nguyên lý đánh giá**:
+
 - **Content Preservation**: CLIP-content của model càng sát baseline càng tốt; Style Strength ≈1 nghĩa là độ thay đổi vừa đủ.
 - **Style Quality**: CLIP-style giảm ⇒ mô hình áp đúng style, không cần phụ thuộc texture low-level.
 - **Trade-off**: DreamBooth thường có Style Strength cao (áp style mạnh, khả năng mất content cao) trong khi LoRA/TI giữ content tốt hơn. Bộ CLIP metrics thể hiện trade-off này rõ ràng và nhất quán. LoRA vừa áp style tốt và giữ content tốt nhất, Cân bằng nhất trong cả 3 model.
