@@ -120,8 +120,8 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 | Phương pháp | Parameters | Checkpoint Size | Training Time | GPU Memory |
 |-------------|-----------|----------------|---------------|------------|
 | **Full Fine-tune** | 860M | ~3-4GB | Vài ngày | ~24GB |
-| **LoRA (r=4)** | ~4-8M | ~1-2GB | < 6 giờ | ~12GB |
-| **DreamBooth (attention-only)** | ~260M (30% UNet) | ~3-4GB | ~12 giờ | ~5-6GB |
+| **LoRA (r=4)** | ~4-8M | ~4-8mb | < 6 giờ | ~12GB |
+| **DreamBooth (attention-only)** | ~260M (30% UNet) | ~2-4GB | ~12 giờ | ~5-6GB |
 
 **Kết luận**:
 
@@ -420,28 +420,29 @@ customized-image-generation/
 ├── .gitignore                         # Loại bỏ checkpoints, datasets, models
 ├── requirements.txt                   # Danh sách dependencies
 │
-├── notebooks/                         # Nơi làm việc chính
-│   ├── 00-Data-EDA.ipynb              # EDA và phân tích dữ liệu (Hy)
-│   ├── 01a_LoRA_Training.ipynb         # LoRA training (Phát)
-│   ├── 01b_DreamBooth_Training.ipynb   # DreamBooth training (Hy)
-│   ├── 01c_Textual_Inversion_Training.ipynb  # Textual inversion (Minh Quốc)
-│   ├── 04a_Evaluation_Metrics_LoRA.ipynb    # Đánh giá LoRA (Hy)
-│   ├── 04b_Evaluation_Metrics_DreamBooth_TI.ipynb  # Đánh giá DreamBooth + TI (Hy)
-│   └── 05_Results_Analysis.ipynb      # Phân tích và so sánh kết quả (Hy)
+├── notebooks/                                        # Nơi làm việc chính
+│   ├── 00-Data-EDA.ipynb                             # EDA và phân tích dữ liệu (Hy)
+│   ├── 01a_LoRA_Training.ipynb                       # LoRA training (Phát)
+│   ├── 01b_DreamBooth_Training.ipynb                 # DreamBooth training (Hy)
+│   ├── 01c_Textual_Inversion_Training.ipynb          # Textual inversion (Minh Quốc)
+│   ├── 02a-LoRA-Inference-Test.ipynb                 # Test inference LoRA
+│   ├── 02b-Dreambooth-Inference-Test.ipynb           # Test inference DreamBooth
+│   ├── 02c-Textual-Inversion-Inference-Test.ipynb    # Test inference TI
+│   ├── 03_Demo_Application.ipynb                     # Demo Gradio (Minh Quốc)
+│   ├── 04a_Evaluation_Metrics_LoRA.ipynb             # Đánh giá LoRA (Hy)
+│   ├── 04b_Evaluation_Metrics_DreamBooth_TI.ipynb    # Đánh giá DreamBooth + TI (Hy)
+│   └── 05_Results_Analysis.ipynb                     # Phân tích và so sánh kết quả (Hy)
 │
-├── testInfer/                         # Inference test notebooks
-│   ├── 01-LoRA-Inference-Test.ipynb    # Test inference LoRA
-│   ├── 02-Dreambooth-Inference-Test.ipynb  # Test inference DreamBooth
-│   └── 03-Textual-Inversion-Inference-Test.ipynb  # Test inference TI
 │
 ├── docs/                              # Tài liệu chi tiết
 │   ├── architecture.md                # Giải thích SD + LoRA
 │   ├── training_guide.md              # Hướng dẫn training
-│   └── evaluation_metrics.md         # Cách tính các chỉ số
+│   └── evaluation_metrics.md          # Cách tính các chỉ số
 │
 └── results/                           # Kết quả mẫu
     ├── eda/                           # Kết quả EDA
-    └── metrics/                       # Metrics và logs
+    ├── metrics/                       # Metrics và logs
+    ├── models/                        # Models
     └── samples/                       # Output samples
 ```
 
