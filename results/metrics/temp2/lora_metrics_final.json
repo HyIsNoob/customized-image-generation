@@ -1,0 +1,42 @@
+{
+  "baseline": {
+    "clip_content": 0.40887451171875,
+    "clip_content_std": 0.051891765355666246,
+    "style_strength": 1.0
+  },
+  "lora_actionpainting": {
+    "clip_content": 0.41534423828125,
+    "clip_content_std": 0.06384496156286994,
+    "clip_style": 0.3427734375,
+    "clip_style_std": 0.07437719197609426,
+    "style_strength": 1.0158232572025676
+  },
+  "lora_analyticalcubism": {
+    "clip_content": 0.429931640625,
+    "clip_content_std": 0.06478334853899421,
+    "clip_style": 0.35498046875,
+    "clip_style_std": 0.0852606736825756,
+    "style_strength": 1.051500223914017
+  },
+  "lora_contemporaryrealism": {
+    "clip_content": 0.426116943359375,
+    "clip_content_std": 0.062351400329030984,
+    "clip_style": 0.4388427734375,
+    "clip_style_std": 0.04744359708260597,
+    "style_strength": 1.042170473204956
+  },
+  "lora_newrealism": {
+    "clip_content": 0.419769287109375,
+    "clip_content_std": 0.07252609505756999,
+    "clip_style": 0.43902587890625,
+    "clip_style_std": 0.05423244111073154,
+    "style_strength": 1.0266457680250785
+  },
+  "lora_syntheticcubism": {
+    "clip_content": 0.4296875,
+    "clip_content_std": 0.062361563907707904,
+    "clip_style": 0.32928466796875,
+    "clip_style_std": 0.0606668268520822,
+    "style_strength": 1.0509031198686372
+  }
+}

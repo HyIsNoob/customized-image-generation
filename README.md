@@ -573,13 +573,13 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 - DreamBooth: LR=1e-5, Batch=1, Steps=2k, Prior loss weight=0.6
 - Textual Inversion: LR=5e-5, Batch=1, Steps=400
 
-### Evaluation Strategy
+### Evaluation Strategy (Similarity Update)
 
-**Metrics sử dụng**:
+**Metrics sử dụng (Similarity Version)**:
 
-- **CLIP-content**: `1 - cos_sim(clip(output), clip(content))`.  Thấp hơn → output giữ semantic content tốt hơn (so với ảnh gốc).
-- **Style Strength Score**: `clip_content / baseline_clip_content`. ≈1 nghĩa là áp style tương đương baseline, >1 nghĩa là áp style mạnh hơn (hy sinh content nhiều hơn).
-- **CLIP-style**: `1 - cos_sim(clip(output), clip(style_reference))`. Thấp hơn → output giống style reference hơn theo CLIP.
+- **CLIP-content Similarity**: `cos_sim(clip(output), clip(content))` – Cao hơn ⇒ giữ semantic content tốt hơn.
+- **CLIP-style Similarity**: `cos_sim(clip(output), style_centroid)` – Cao hơn ⇒ giống phong cách hơn. `style_centroid = mean([clip(style_i)])` trên toàn bộ ảnh tham chiếu phong cách giúp giảm nhiễu so với chọn 1 ảnh ngẫu nhiên.
+- **Content Retention Rate** (trước đây Style Strength): `CLIP-content Similarity / baseline_CLIP-content Similarity` – Quanh 1.0: cân bằng; <1: hy sinh nội dung mạnh; >1: đôi khi baseline bị nhiễu.
 
 **Additional Metrics**:
 
@@ -597,29 +597,29 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 - LoRA: Action_painting, Analytical_Cubism, Contemporary_Realism, New_Realism, Synthetic_Cubism (5 styles).
 - Textual Inversion: sks_style (1 style).
 
-**Nguyên lý đánh giá**:
+**Nguyên lý đánh giá (Similarity)**:
 
-- **Content Preservation**: CLIP-content của model càng sát baseline càng tốt; Style Strength ≈1 nghĩa là độ thay đổi vừa đủ.
-- **Style Quality**: CLIP-style giảm ⇒ mô hình áp đúng style, không cần phụ thuộc texture low-level.
-- **Trade-off**: DreamBooth thường có Style Strength cao (áp style mạnh, khả năng mất content cao) trong khi LoRA/TI giữ content tốt hơn. Bộ CLIP metrics thể hiện trade-off này rõ ràng và nhất quán. LoRA vừa áp style tốt và giữ content tốt nhất, Cân bằng nhất trong cả 3 model.
+- **Content Preservation**: CLIP-content Similarity càng gần hoặc ≥ baseline càng tốt. Content Retention Rate ~ 0.90–1.05 là chấp nhận được.
+- **Style Quality**: CLIP-style Similarity cao phản ánh phong cách được học ổn định (so với centroid).
+- **Trade-off**: CLIP-style Similarity cao nhưng Retention Rate <0.9 ⇒ phong cách mạnh làm mất nội dung. LoRA thường cân bằng cả hai; DreamBooth (attention-only) đôi lúc giảm content similarity; Textual Inversion vừa phải cả hai chiều.
 
 ---
 
-## Evaluation Metrics
+## Evaluation Metrics (Similarity)
 
 ### Target Metrics
 
-- **CLIP-content** gần với baseline (≤ baseline + 0.05) để đảm bảo giữ nội dung.
-- **Style Strength Score** quanh 1 cho kết quả cân bằng; >1 biểu thị áp style mạnh hơn baseline (chấp nhận được nếu CLIP-style thấp).
-- **CLIP-style** < 0.5 cho chất lượng style tốt (ngưỡng thực nghiệm).
+- **CLIP-content Similarity** ≥ (baseline − 0.05) để giữ nội dung (hoặc Retention Rate ≥ 0.90).
+- **Content Retention Rate**: 0.90 – 1.05 (≈1.0 cân bằng giữa content & style).
+- **CLIP-style Similarity** > 0.50 (thực nghiệm) ⇒ phong cách được học tốt; càng cao càng thể hiện đặc trưng rõ.
 - **Inference time < 5s/ảnh** với 256×256 trên Kaggle P100/T4.
 
-### Lưu ý về Trade-off
+### Lưu ý về Trade-off (Similarity)
 
-- **LoRA**: Thường có Style Strength >1 (apply style mạnh) kèm CLIP-style thấp ⇒ phù hợp nếu ưu tiên style đồng thời cũng có CLIP-content thấp, tốt nhất để style transfer.
-- **DreamBooth**: CLIP-Content cao (giữ content tệ).CLIP-style trung bình nhưng Style Strength lại cao cho thấy áp style mạnh vừa có khả năng mất nội dung nhưng style áp chỉ vừa đạt với style Reference.
-- **Textual Inversion**: CLIP-content trung bình và CLIP-Style trung bình, phù hợp nhanh gọn nhẹ nhưng không quá tốt.
-- Bộ metrics CLIP cho phép đánh giá đồng nhất giữa các notebook vì baseline và tập ảnh đã được cố định.
+- **LoRA**: Thường đạt content similarity cao và style similarity cao ⇒ cân bằng tốt.
+- **DreamBooth (attention-only)**: Có thể đạt style similarity vừa phải nhưng đôi khi giảm content similarity ⇒ cần tinh chỉnh thêm nếu muốn cân bằng.
+- **Textual Inversion**: Nhanh, nhẹ; similarity trung bình cả hai chiều ⇒ phù hợp cho mở rộng nhanh phong cách.
+- Sử dụng centroid giảm biến thiên giữa các cặp so sánh, giúp so sánh công bằng giữa phương pháp.
 
 ---
 

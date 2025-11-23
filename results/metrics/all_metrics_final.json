@@ -1,65 +1,66 @@
 {
   "baseline": {
-    "clip_content": 0.40887451171875,
-    "clip_content_std": 0.051891765355666246,
+    "model": "baseline",
+    "clip_content": 0.59112548828125,
+    "clip_content_std": 0.05198242823880042,
     "style_strength": 1.0,
     "clip_style": NaN,
     "clip_style_std": NaN
   },
   "lora_actionpainting": {
-    "clip_content": 0.41534423828125,
+    "clip_content": 0.58465576171875,
     "clip_content_std": 0.06384496156286994,
-    "clip_style": 0.3427734375,
-    "clip_style_std": 0.07437719197609426,
-    "style_strength": 1.0158232572025676
+    "clip_style": 0.7010498046875,
+    "clip_style_std": 0.03983365847376412,
+    "style_strength": 0.9890552400619514
   },
   "lora_analyticalcubism": {
-    "clip_content": 0.429931640625,
-    "clip_content_std": 0.06478334853899421,
-    "clip_style": 0.35498046875,
-    "clip_style_std": 0.0852606736825756,
-    "style_strength": 1.051500223914017
+    "clip_content": 0.57012939453125,
+    "clip_content_std": 0.06475249038789593,
+    "clip_style": 0.71063232421875,
+    "clip_style_std": 0.08302035517457147,
+    "style_strength": 0.9644811564274651
   },
   "lora_contemporaryrealism": {
-    "clip_content": 0.426116943359375,
-    "clip_content_std": 0.062351400329030984,
-    "clip_style": 0.4388427734375,
-    "clip_style_std": 0.04744359708260597,
-    "style_strength": 1.042170473204956
+    "clip_content": 0.573944091796875,
+    "clip_content_std": 0.06232994757383315,
+    "clip_style": 0.673095703125,
+    "clip_style_std": 0.028566539720797004,
+    "style_strength": 0.9709344346928239
   },
   "lora_newrealism": {
-    "clip_content": 0.419769287109375,
-    "clip_content_std": 0.07252609505756999,
-    "clip_style": 0.43902587890625,
-    "clip_style_std": 0.05423244111073154,
-    "style_strength": 1.0266457680250785
+    "clip_content": 0.580169677734375,
+    "clip_content_std": 0.07260340927724156,
+    "clip_style": 0.63714599609375,
+    "clip_style_std": 0.03545207492892307,
+    "style_strength": 0.9814661848218895
   },
   "lora_syntheticcubism": {
-    "clip_content": 0.4296875,
-    "clip_content_std": 0.062361563907707904,
-    "clip_style": 0.32928466796875,
-    "clip_style_std": 0.0606668268520822,
-    "style_strength": 1.0509031198686372
+    "clip_content": 0.57037353515625,
+    "clip_content_std": 0.06248828658966978,
+    "clip_style": 0.7373046875,
+    "clip_style_std": 0.051219516154919334,
+    "style_strength": 0.9648941662364481
   },
   "dreambooth_contemporaryrealism": {
-    "clip_content": 0.43206787109375,
-    "clip_content_std": 0.05781981834279833,
-    "clip_style": 0.432708740234375,
-    "clip_style_std": 0.059896599550460186,
-    "style_strength": 1.0567248843110912
+    "clip_content": 0.568023681640625,
+    "clip_content_std": 0.05785655553264616,
+    "clip_style": 0.68829345703125,
+    "clip_style_std": 0.02607615888713976,
+    "style_strength": 0.9609189468249871
   },
   "dreambooth_newrealism": {
-    "clip_content": 0.444244384765625,
-    "clip_content_std": 0.05880317613624092,
-    "clip_style": 0.38604736328125,
-    "clip_style_std": 0.05055593978281115,
-    "style_strength": 1.0865054485744141
+    "clip_content": 0.555816650390625,
+    "clip_content_std": 0.05880279602388132,
+    "clip_style": 0.69647216796875,
+    "clip_style_std": 0.04409556663172041,
+    "style_strength": 0.9402684563758389
   },
   "ti_sksstyle": {
-    "clip_content": 0.428924560546875,
-    "clip_content_std": 0.04927763028237298,
-    "clip_style": 0.43804931640625,
-    "clip_style_std": 0.031230383915216382,
-    "style_strength": 1.0490371697268248
+    "clip_content": 0.57110595703125,
+    "clip_content_std": 0.04922745491433371,
+    "clip_style": 0.67041015625,
+    "clip_style_std": 0.0441280380802502,
+    "style_strength": 0.9661331956633971
   }
 }
