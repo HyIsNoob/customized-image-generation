@@ -1,0 +1,28 @@
+{
+  "baseline": {
+    "clip_content": 0.40887451171875,
+    "clip_content_std": 0.051891765355666246,
+    "style_strength": 1.0
+  },
+  "dreambooth_contemporaryrealism": {
+    "clip_content": 0.43206787109375,
+    "clip_content_std": 0.05781981834279833,
+    "clip_style": 0.432708740234375,
+    "clip_style_std": 0.059896599550460186,
+    "style_strength": 1.0567248843110912
+  },
+  "dreambooth_newrealism": {
+    "clip_content": 0.444244384765625,
+    "clip_content_std": 0.05880317613624092,
+    "clip_style": 0.38604736328125,
+    "clip_style_std": 0.05055593978281115,
+    "style_strength": 1.0865054485744141
+  },
+  "ti_sksstyle": {
+    "clip_content": 0.428924560546875,
+    "clip_content_std": 0.04927763028237298,
+    "clip_style": 0.43804931640625,
+    "clip_style_std": 0.031230383915216382,
+    "style_strength": 1.0490371697268248
+  }
+}
