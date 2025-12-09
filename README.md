@@ -39,7 +39,7 @@ Dự án **Customized Image Generation** nghiên cứu và triển khai phương
 
 ### Mục Tiêu
 
-- Fine-tune thành công 3-5 phong cách nghệ thuật
+- Fine-tune thành công 5 phong cách nghệ thuật (LoRA), 2 phong cách (DreamBooth), 1 phong cách (Textual Inversion)
 - Ảnh sinh ra giữ bố cục content (SSIM > baseline) và thể hiện style (LPIPS vừa phải)
 - Demo chạy ổn định, thời gian inference < 5s/ảnh
 - Model gọn < 1 tỉ tham số, training < vài ngày
@@ -144,9 +144,11 @@ Fine-tune mô hình Stable Diffusion để sinh ảnh theo phong cách cụ th�
 
 **Style Dataset**: WikiArt
 
-- 3-5 phong cách nghệ thuật
-- 50-100 ảnh/phong cách
-- Các phong cách: Contemporary_Realism, New_Realism, Synthetic_Cubism, Analytical_Cubism, Action_painting
+- 5 phong cách nghệ thuật được chọn
+- Số lượng ảnh/phong cách: Contemporary_Realism (481), New_Realism (314), Synthetic_Cubism (216), Analytical_Cubism (110), Action_painting (98)
+- LoRA training: 100 ảnh/phong cách
+- DreamBooth training: 40 instance images + 200 class images/phong cách
+- Textual Inversion training: 20 ảnh từ COCO dataset
 
 ### 2a. Fine-tune LoRA
 
@@ -188,11 +190,13 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 - **Fine-tune target: Chỉ attention layers của UNet** (cross-attention và self-attention)
 - Parameters train: ~30% của UNet (~260M parameters thay vì 860M)
 - Input size: 256 (giảm từ 512 để tiết kiệm memory)
+- Instance images: 40 ảnh/phong cách
+- Class images: 200 ảnh/phong cách (prior preservation)
 - Learning rate: 1e-5
 - Batch size: 1 (với gradient accumulation 16)
-- Steps: 2k per style
+- Steps: 2000 per style
 - Optimizer: AdamW
-- Loss: MSE loss + Prior preservation loss (weight=1.0)
+- Loss: MSE loss + Prior preservation loss (weight=0.6)
 
 **Memory optimizations** (bắt buộc do hạn chế phần cứng):
 
@@ -243,18 +247,19 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 **Cấu hình**:
 
 - Base model: `runwayml/stable-diffusion-v1-5`
-- Modules train: Textual embedding (768 chiều) dành cho token mới
+- Modules train: Textual embedding (768 chiều) dành cho token mới `<sks_style>`
 - Learning rate: 5e-5
 - Batch size: 1 (gradient accumulation 4)
 - Steps: 400 per style
 - Optimizer: AdamW
-- Scheduler: Cosine/Constant
+- Scheduler: Constant
 
 **Yêu cầu thêm**:
 
-- Captions chứa token đặc biệt (`sks style painting`)
-- 10-20 instance images đã resize 512x512
+- Captions chứa token đặc biệt (`<sks_style> style`)
+- 20 instance images từ COCO dataset đã resize 512x512
 - Theo dõi loss embedding để tránh overfit
+- Embedding được scale về norm trung bình của vocabulary
 
 **Kết quả**:
 
@@ -276,7 +281,7 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 | Loại | Tên Dataset | Quy Mô | Ghi Chú |
 |------|------------|--------|---------|
 | **Content** | COCO 2017 | 118k train, 5k val | Ảnh thực tế đời thường |
-| **Style** | WikiArt | 3-5 phong cách, 50-100 ảnh/phong cách | Tranh nghệ thuật |
+| **Style** | WikiArt | 5 phong cách, 98-481 ảnh/phong cách | Tranh nghệ thuật |
 
 ---
 
@@ -307,10 +312,9 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Save/load DreamBooth checkpoints (chỉ attention layers)
 
 3. **Evaluation Framework**:
-   - CLIP-Based: CLIP-Content, CLIP-Style, Style Strength.
-   - Load style reference images từ WikiArt
-   - Inference time benchmark
-   - Create test suite với diverse samples
+   - CLIP-Based metrics: CLIP-Content Similarity, CLIP-Style Similarity (sử dụng style centroid), Content Retention Rate
+   - Load style reference images từ WikiArt (20 ảnh/phong cách)
+   - Test set: 8 ảnh COCO val2017 (256×256) được cố định qua `content_paths.json`
    - So sánh LoRA vs DreamBooth vs Textual Inversion
 
 4. **Results & Reporting**:
@@ -322,11 +326,12 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 
 - Notebook: `00-Data-EDA.ipynb`
 - Notebook: `01b_DreamBooth_Training.ipynb`
+- Notebook: `02b-Dreambooth-Inference-Test.ipynb`
 - Notebook: `04a_Evaluation_Metrics_LoRA.ipynb`
 - Notebook: `04b_Evaluation_Metrics_DreamBooth_TI.ipynb`
-- Notebook: `05_Results_Analysis.ipynb`
-- Trained DreamBooth checkpoints (2 styles)
-- Evaluation report với 4 metrics
+- Notebook: `05_Results_Analysis_FINALnew.ipynb`
+- Trained DreamBooth checkpoints (2 styles: Contemporary_Realism, New_Realism)
+- Evaluation report với CLIP-based metrics
 - Slide
 
 ---
@@ -348,7 +353,8 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
    - Loss function implementation (L2 + LPIPS + StyleLoss)
 
 2. **Training & Optimization**:
-   - Fine-tune LoRA cho 3-5 phong cách
+   - Fine-tune LoRA cho 5 phong cách (Action_painting, Analytical_Cubism, Contemporary_Realism, New_Realism, Synthetic_Cubism)
+   - Sử dụng 100 ảnh/phong cách từ WikiArt
    - Hyperparameter tuning (rank, learning rate, batch size)
    - Monitoring training progress
    - Save/load LoRA checkpoints
@@ -366,8 +372,8 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 **Deliverables**:
 
 - Notebook: `01a_LoRA_Training.ipynb`
-- Notebook: `testInfer/01-LoRA-Inference-Test.ipynb`
-- Trained LoRA checkpoints (5 styles)
+- Notebook: `02a-LoRA-Inference-Test.ipynb`
+- Trained LoRA checkpoints (5 styles: Action_painting, Analytical_Cubism, Contemporary_Realism, New_Realism, Synthetic_Cubism)
 - Training logs và metrics
 - Thuyết trình
 
@@ -384,15 +390,17 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 **Công việc kỹ thuật**:
 
 1. **Textual Inversion Training**:
-   - Chuẩn bị instance captions với token đặc biệt
-   - Huấn luyện embedding trên SD v1.5 (500-1000 steps/style)
-   - Quản lý checkpoint embeddings (.pt /.bin)
+   - Chuẩn bị instance captions với token đặc biệt `<sks_style>`
+   - Huấn luyện embedding trên SD v1.5 (400 steps)
+   - Sử dụng 20 ảnh từ COCO dataset
+   - Quản lý checkpoint embeddings (.pt)
    - Ghi nhận thời gian train, kích thước checkpoint, GPU usage
 
 2. **Demo & UX**:
    - Mở rộng notebook `03_Demo_Application.ipynb`
-   - Cho phép người dùng chọn mô hình (LoRA / DreamBooth / Textual Inversion) + tham số (style strength, steps)
-   - Tích hợp inference pipeline cho cả 3 phương pháp
+   - Demo Gradio hỗ trợ 5 LoRA styles với multi-adapter switching
+   - Cho phép người dùng chọn style, điều chỉnh LoRA weight, denoise strength, guidance scale, steps, seed
+   - Tích hợp inference pipeline cho LoRA
    - Xuất bản hướng dẫn sử dụng/demo video
 
 3. **Inference Integration**:
@@ -403,11 +411,10 @@ L_total = α·L2 + β·LPIPS + γ·StyleLoss
 **Deliverables**:
 
 - Notebook: `01c_Textual_Inversion_Training.ipynb`
-- Notebook: `testInfer/03-Textual-Inversion-Inference-Test.ipynb`
+- Notebook: `02c-Textual-Inversion-Inference-Test.ipynb`
 - Notebook: `03_Demo_Application.ipynb`
-- Textual inversion embedding checkpoints (1 style)
+- Textual inversion embedding checkpoints (1 style: sks_style)
 - Demo app (Gradio) + video/screenshots
-- Textual inversion embedding checkpoints 
 
 ---
 
@@ -431,7 +438,7 @@ customized-image-generation/
 │   ├── 03_Demo_Application.ipynb                     # Demo Gradio (Minh Quốc)
 │   ├── 04a_Evaluation_Metrics_LoRA.ipynb             # Đánh giá LoRA (Hy)
 │   ├── 04b_Evaluation_Metrics_DreamBooth_TI.ipynb    # Đánh giá DreamBooth + TI (Hy)
-│   └── 05_Results_Analysis.ipynb                     # Phân tích và so sánh kết quả (Hy)
+│   └── 05_Results_Analysis_FINALnew.ipynb            # Phân tích và so sánh kết quả (Hy)
 │
 │
 ├── docs/                              # Tài liệu chi tiết
@@ -517,16 +524,20 @@ PyYAML
 
 - **Chỉ fine-tune attention layers của UNet** (do hạn chế GPU memory trên Kaggle)
 - Train ~30% parameters (~260M thay vì 860M full UNet)
+- Instance images: 40 ảnh/phong cách
+- Class images: 200 ảnh/phong cách (prior preservation)
 - Checkpoint: Chỉ lưu attention layers đã train (nhỏ hơn full model)
-- Training lâu hơn, memory usage ~5-6GB VRAM (với optimizations)
-- Sử dụng prior preservation để tránh overfitting
+- Training lâu hơn (~12 giờ), memory usage ~5-6GB VRAM (với optimizations)
+- Sử dụng prior preservation loss (weight=0.6) để tránh overfitting
 - **Lưu ý**: Trong implementation này, không train full UNet do hạn chế phần cứng
 
 **Baseline fine-tuning 3**: Textual Inversion
 
-- Fine-tune embedding của token đặc biệt trong CLIP text encoder (~768 params)
-- Checkpoint < 1MB, training 400 steps/style, phù hợp cho Kaggle
+- Fine-tune embedding của token đặc biệt `<sks_style>` trong CLIP text encoder (~768 params)
+- Instance images: 20 ảnh từ COCO dataset
+- Checkpoint < 1MB, training 400 steps, phù hợp cho Kaggle
 - Rất nhẹ, training nhanh nhất
+- Embedding được scale về norm trung bình của vocabulary
 
 **Baseline tham khảo**: Stable Diffusion v1.5 gốc (không fine-tune)
 
@@ -569,17 +580,17 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 
 **Hyperparameters** (tham khảo):
 
-- LoRA: Rank=4, LR=1e-4, Batch=2, Steps=1.5k
-- DreamBooth: LR=1e-5, Batch=1, Steps=2k, Prior loss weight=0.6
-- Textual Inversion: LR=5e-5, Batch=1, Steps=400
+- LoRA: Rank=4, LR=1e-4, Batch=2, Steps=1.5k, Resolution=512
+- DreamBooth: LR=1e-5, Batch=1 (gradient accumulation=16), Steps=2k, Prior loss weight=0.6, Resolution=256
+- Textual Inversion: LR=5e-5, Batch=1 (gradient accumulation=4), Steps=400, Resolution=512
 
-### Evaluation Strategy (Similarity Update)
+### Evaluation Strategy (Similarity Version)
 
 **Metrics sử dụng (Similarity Version)**:
 
-- **CLIP-content Similarity**: `cos_sim(clip(output), clip(content))` – Cao hơn ⇒ giữ semantic content tốt hơn.
-- **CLIP-style Similarity**: `cos_sim(clip(output), style_centroid)` – Cao hơn ⇒ giống phong cách hơn. `style_centroid = mean([clip(style_i)])` trên toàn bộ ảnh tham chiếu phong cách giúp giảm nhiễu so với chọn 1 ảnh ngẫu nhiên.
-- **Content Retention Rate** (trước đây Style Strength): `CLIP-content Similarity / baseline_CLIP-content Similarity` – Quanh 1.0: cân bằng; <1: hy sinh nội dung mạnh; >1: đôi khi baseline bị nhiễu.
+- **CLIP-content Similarity**: `cos_sim(clip(output), clip(content))` – Đo độ tương đồng ngữ nghĩa với ảnh gốc. Giá trị gần **1.0** là tốt (giữ nội dung tốt).
+- **CLIP-style Similarity**: `cos_sim(clip(output), style_centroid)` – Đo độ tương đồng với vector trung bình (centroid) của tập ảnh style. `style_centroid = mean([clip(style_i)])` trên 20 ảnh tham chiếu phong cách. Giá trị gần **1.0** là tốt (giống style mẫu).
+- **Content Retention Rate** (trước đây Style Strength): `CLIP-content Similarity / baseline_CLIP-content Similarity` – Tỷ lệ giữ nội dung so với baseline. Quanh **1.0**: cân bằng; <1: hy sinh nội dung mạnh; >1: đôi khi baseline bị nhiễu.
 
 **Additional Metrics**:
 
@@ -588,20 +599,20 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 **Test Set**:
 
 - **Content**: Tập con COCO val2017 (8 ảnh resized 256×256). Danh sách ảnh được cố định và chia sẻ giữa mọi notebook qua `content_paths.json`.
-- **Style**: WikiArt images (10 ảnh/style). Danh sách ảnh cố định qua `style_paths.json` để LoRA và DreamBooth/TI dùng chung baseline.
+- **Style**: WikiArt images (20 ảnh/style). Danh sách ảnh cố định qua `style_paths.json` để LoRA và DreamBooth/TI dùng chung baseline.
 
 **So sánh với Baseline**:
 
 - Baseline: `runwayml/stable-diffusion-v1-5` chạy img2img cùng content images (dùng để chuẩn hóa Style Strength Score).
 - DreamBooth: Contemporary_Realism, New_Realism (2 styles).
 - LoRA: Action_painting, Analytical_Cubism, Contemporary_Realism, New_Realism, Synthetic_Cubism (5 styles).
-- Textual Inversion: sks_style (1 style).
+- Textual Inversion: sks_style (1 style, sử dụng Contemporary_Realism làm style reference cho evaluation).
 
 **Nguyên lý đánh giá (Similarity)**:
 
 - **Content Preservation**: CLIP-content Similarity càng gần hoặc ≥ baseline càng tốt. Content Retention Rate ~ 0.90–1.05 là chấp nhận được.
-- **Style Quality**: CLIP-style Similarity cao phản ánh phong cách được học ổn định (so với centroid).
-- **Trade-off**: CLIP-style Similarity cao nhưng Retention Rate <0.9 ⇒ phong cách mạnh làm mất nội dung. LoRA thường cân bằng cả hai; DreamBooth (attention-only) đôi lúc giảm content similarity; Textual Inversion vừa phải cả hai chiều.
+- **Style Quality**: CLIP-style Similarity cao phản ánh phong cách được học ổn định (so với style centroid từ 20 ảnh reference).
+- **Trade-off**: CLIP-style Similarity cao nhưng Retention Rate <0.9 ⇒ phong cách mạnh làm mất nội dung. LoRA thường cân bằng cả hai tốt nhất; DreamBooth (attention-only) đôi lúc giảm content similarity; Textual Inversion vừa phải cả hai chiều.
 
 ---
 
@@ -609,17 +620,17 @@ Xem chi tiết tại: [`docs/baseline_and_evaluation.md`](docs/baseline_and_eval
 
 ### Target Metrics
 
-- **CLIP-content Similarity** ≥ (baseline − 0.05) để giữ nội dung (hoặc Retention Rate ≥ 0.90).
+- **CLIP-content Similarity**: Giá trị gần **1.0** là tốt (giữ nội dung tốt). Target ≥ (baseline − 0.05) hoặc Retention Rate ≥ 0.90.
 - **Content Retention Rate**: 0.90 – 1.05 (≈1.0 cân bằng giữa content & style).
-- **CLIP-style Similarity** > 0.50 (thực nghiệm) ⇒ phong cách được học tốt; càng cao càng thể hiện đặc trưng rõ.
+- **CLIP-style Similarity**: Giá trị gần **1.0** là tốt (giống style mẫu). Target > 0.50 (thực nghiệm) ⇒ phong cách được học tốt; càng cao càng thể hiện đặc trưng rõ.
 - **Inference time < 5s/ảnh** với 256×256 trên Kaggle P100/T4.
 
 ### Lưu ý về Trade-off (Similarity)
 
-- **LoRA**: Thường đạt content similarity cao và style similarity cao ⇒ cân bằng tốt.
-- **DreamBooth (attention-only)**: Có thể đạt style similarity vừa phải nhưng đôi khi giảm content similarity ⇒ cần tinh chỉnh thêm nếu muốn cân bằng.
-- **Textual Inversion**: Nhanh, nhẹ; similarity trung bình cả hai chiều ⇒ phù hợp cho mở rộng nhanh phong cách.
-- Sử dụng centroid giảm biến thiên giữa các cặp so sánh, giúp so sánh công bằng giữa phương pháp.
+- **LoRA**: Thường đạt content similarity cao (0.57-0.58) và style similarity cao (0.64-0.74) ⇒ cân bằng tốt nhất.
+- **DreamBooth (attention-only)**: Có thể đạt style similarity vừa phải (0.69-0.70) nhưng đôi khi giảm content similarity (0.56-0.57) ⇒ cần tinh chỉnh thêm nếu muốn cân bằng.
+- **Textual Inversion**: Nhanh, nhẹ; similarity trung bình cả hai chiều (content: 0.57, style: 0.67) ⇒ phù hợp cho mở rộng nhanh phong cách.
+- Sử dụng style centroid (20 ảnh reference) giảm biến thiên giữa các cặp so sánh, giúp so sánh công bằng giữa phương pháp.
 
 ---
 
